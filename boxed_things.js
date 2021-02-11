@@ -110,6 +110,11 @@ function dragEnd(e) {
             }
             activeItem.style = null;
         }
+
+        if( activeMode === 1) {
+            activeItem.fadeOut(1200)
+            setTimeout(activeItem.fadeIn(1200, "grid"), 2500);
+        }
         
         if( activeMode === 6) { //snap to width
             let newWidth = Math.round(activeItem.offsetWidth / step_width)*step_width
@@ -125,30 +130,32 @@ function dragEnd(e) {
     nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
     for( const divField of nodeList ) {
         if( divField.isEmpty() && divField.id !== KONST_ID_default_target_area) {
-            divField.remove();
+            divField.fadeOut(600, true);
         }
     }
-    //move entire grid one to  the right/bottom if any field is 1 / 1
-    //nodeList is static so it needs to be retrieved anew
-    nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
-    let moveRight = false;
-    let moveBot = false;
-    for( const divNode of nodeList ) {
-        if( parseInt(divNode.style.gridColumnStart) === 1 ) {moveRight = true;}
-        if( parseInt(divNode.style.gridRowStart) === 1 ) {moveBot = true;}
-    }
-    if( moveRight || moveBot ) {
-        moveRight = moveRight ? 1 : 0;
-        moveBot = moveBot ? 1 : 0; 
-        console.log(`Right: ${moveRight} - Bot: ${moveBot}`);
+    setTimeout(function() {
+        //move entire grid one to  the right/bottom if any field is 1 / 1
+        //nodeList is static so it needs to be retrieved anew
+        nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
+        let moveRight = false;
+        let moveBot = false;
         for( const divNode of nodeList ) {
-            divNode.style.gridColumnStart = parseInt(divNode.style.gridColumnStart) + moveRight
-            divNode.style.gridColumnEnd = parseInt(divNode.style.gridColumnEnd) + moveRight
-            divNode.style.gridRowStart = parseInt(divNode.style.gridRowStart) + moveBot
-            divNode.style.gridRowEnd = parseInt(divNode.style.gridRowEnd) + moveBot
+            if( parseInt(divNode.style.gridColumnStart) === 1 ) {moveRight = true;}
+            if( parseInt(divNode.style.gridRowStart) === 1 ) {moveBot = true;}
         }
-    }
-
+        if( moveRight || moveBot ) {
+            moveRight = moveRight ? 1 : 0;
+            moveBot = moveBot ? 1 : 0; 
+            console.log(`Right: ${moveRight} - Bot: ${moveBot}`);
+            for( const divNode of nodeList ) {
+                divNode.style.gridColumnStart = parseInt(divNode.style.gridColumnStart) + moveRight
+                divNode.style.gridColumnEnd = parseInt(divNode.style.gridColumnEnd) + moveRight
+                divNode.style.gridRowStart = parseInt(divNode.style.gridRowStart) + moveBot
+                divNode.style.gridRowEnd = parseInt(divNode.style.gridRowEnd) + moveBot
+            }
+        }
+    }, 800); //anonymous function from above
+    
     active = false;
     activeItem = null;
     activeMode = null;
@@ -257,6 +264,7 @@ function insertGridField(target, coordinates) {
     info.style.background = color
     info.style.outelineColor = invertColor(color);
     target.appendChild(brandNew);
+    brandNew.fadeIn(600, "grid-item");
 }
 
 function getCoords(elem) {
@@ -386,4 +394,41 @@ function invertColor(hex, bw = false) {
     b = (255 - b).toString(16);
     // pad each with zeros and return
     return "#" + padZero(r) + padZero(g) + padZero(b);
+}
+
+
+//took this as inspiration but made a prototype out of it 
+//https://dev.to/bmsvieira/vanilla-js-fadein-out-2a6o
+//https://codepen.io/jorgemaiden/pen/xoRKWN
+Element.prototype.fadeOut = function(duration = 600, remove = false) {
+    var elementOfSurprise = this;
+    elementOfSurprise.style.opacity = 1;
+    var last = +new Date();
+    var nextTick = function () {
+        elementOfSurprise.style.opacity = +elementOfSurprise.style.opacity - (new Date() - last) / duration;
+        last = +new Date();
+        if( +elementOfSurprise.style.opacity > 0) {
+            (window.requestAnimationFrame && requestAnimationFrame(nextTick)) || setTimeout(nextTick, 16);
+        }
+        else if( remove === true ) {
+            elementOfSurprise.remove();
+        }
+    };
+    nextTick();
+}
+
+Element.prototype.fadeIn = function(duration = 600, display = "block") {
+    var elementOfSurprise = this;
+    elementOfSurprise.style.opacity = 0;
+    elementOfSurprise.style.display = display;
+    
+    var last = +new Date();
+    var nextTick = function () {
+        elementOfSurprise.style.opacity = +elementOfSurprise.style.opacity + (new Date() - last) / duration;
+        last = +new Date();
+        if( +elementOfSurprise.style.opacity < 1) {
+            (window.requestAnimationFrame && requestAnimationFrame(nextTick)) || setTimeout(nextTick, 16);
+        }
+    };
+    nextTick();
 }
