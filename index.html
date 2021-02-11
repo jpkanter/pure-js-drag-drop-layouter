@@ -1,7 +1,6 @@
  <html>
      <head>
          <title>Javascript things test</title>
-         <script src="./jquery-3.5.1.min.js"></script>
          <script src="./boxed_things.js"></script>
          <link rel="stylesheet" href="./basic.css">
      </head>
@@ -9,9 +8,14 @@
          <div class="main">
              <h1>Javascript Snatch to things</h1>
              <div id="staging" class="staging_area">
-                 <div id="resting_place" class="resting">
-                     <div id="target_area_default" class="target_field" style="grid-row: 1; grid-column: 1;"></div>
-                 </div>
+                <div id="resting_place" class="resting">
+                    <div class="dummyBlock">
+                        <div class="target_grid" id="design_grid">
+                            <div id="target_area_default" class="target_field" style="grid-area: 1 / 1 / 1 / 1;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div id="notice_area">Offset</div>
                  <div id="grid_place" class="grid">
                     <div class="outer_box">
                         <div class="corner_lt"></div>

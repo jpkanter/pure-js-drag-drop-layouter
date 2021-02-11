@@ -1,63 +1,84 @@
  :root {
-     --black: #000000;
-     --white: #FFFFFF;
-     --grey1: #BBBBBB;
-     --grey2: #999999;
-     --grey3: #808080;
-     --grey4: #404040;
-     --lightgreen: #AAFFAA;
-     --highlight: #CC0000;
-     --link: #4444BB;
-     --link-active: #4400BB;
+   --black: #000000;
+   --white: #FFFFFF;
+   --grey1: #BBBBBB;
+   --grey2: #999999;
+   --grey3: #808080;
+   --grey4: #404040;
+   --lightgreen: #AAFFAA;
+   --highlight: #CC0000;
+   --link: #4444BB;
+   --link-active: #4400BB;
  }
 
  body {
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: 12px;
-    color: var(--black);
+   font-family: Arial, Helvetica, sans-serif;
+   font-size: 12px;
+   color: var(--black);
  }
 
  a {
-     color: var(--link);
+   color: var(--link);
  }
  a:hover {
-     color: var(--link-active);
+   color: var(--link-active);
  }
 
  div.main {
-     margin: auto;
-     width: 960px;
-     border: 1px solid var(--grey2);
-     background: var(--grey1);
-     margin: 3rem;
-     padding: 2rem;
-     border-radius: 3rem;
+   margin: auto;
+   width: 960px;
+   border: 1px solid var(--grey2);
+   background: var(--grey1);
+   margin: 3rem;
+   padding: 2rem;
+   border-radius: 3rem;
  }
 
  div.staging {
-     padding: 3rem;
-     display: grid;
+   padding: 3rem;
+   display: grid;
  }
 
  div.resting {
-     background: var(--grey4);
-     color: var(--white);
-     padding: 1rem;
-     border: 1px solid var(--white);
+   background: var(--grey4);
+   color: var(--white);
+   padding: 5rem 5rem 5rem 5rem;
+   border: 1px solid var(--white);
  }
 
+div.target_grid {
+   display: grid;
+   grid-row-gap: 0.5rem;
+   grid-column-gap: 0.5rem;
+   margin: 0;
+   padding: 0;
+}
+
+div.dummyBlock {
+   margin: 0;
+   padding: 0;
+   display: inline-block;
+}
+
  div.grid {
-     background: var(--lightgreen);
-     padding: 1rem;
+    background: var(--lightgreen);
+    padding: 1rem;
  }
 
  .target_field {
-     background: var(--black);
-     outline: 1px dashed #FF06B5;
-     outline-offset: -2px;
-     height: 30px;
-     width: 160px;
-     display: inline-grid;
+    background: var(--black);
+    outline: 1px dashed #FF06B5;
+    outline-offset: -2px;
+    height: 45px;
+    width: 175px;
+    display: inline-grid;
+ }
+
+ .target_field > * {
+    position:relative;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
  }
 
  .outer_box {
@@ -86,7 +107,7 @@
  }
 
  .grid .outer_box {
-     margin: 5px;
+    margin: 5px;
  }
 
 .corner_lt, .corner_rt, .corner_lb, .corner_rb {
