@@ -7,6 +7,7 @@ const KONST_CLASS_target_area = "target_field";
 const KONST_ID_default_target_area = "target_area_default";
 const KONST_ID_staging_area = "resting_place";
 const KONST_ID_the_grid = "design_grid";
+const KONST_ID_repository = "grid_place";
 
 docReady(function() {
     container = document.querySelector("#staging");
@@ -22,6 +23,10 @@ docReady(function() {
     let color = randomColor();
     info.style.background = color
     info.style.color = invertColor(color, true);
+    let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .outer_box`)
+    for( const box of dragBoxes) {
+        spawnDragBox(box);
+    }
 });
 
 function docReady(fn) {
@@ -226,26 +231,29 @@ function handleGridLayouter(e) {
         let staging = document.querySelector('#'+KONST_ID_staging_area);
         let nodeList = staging.querySelectorAll('.'+KONST_CLASS_target_area);
         let notes = document.querySelector('#notice_area');
-        let currentClosest = 40962048.0;
+        let currentClosest = 40962048.0; //one of those magic numbers that hopes that the UltraHiDPI Display never gets invented
         let closestElement = null;
         let angle = 0.0;
+        //correct for page scroll:
+        Mpoint = {x: e.clientX + window.pageXOffset, y: e.clientY + window.pageYOffset};
         for( const node of nodeList) {
+            if( node.isEmpty() ) { continue; }
             node.style.outline = "1px dashed #FF06B5";
             let coords = getCoords(node);
             let tempDist = getBoxDistance2Point(
-                e.clientX, e.clientY,
+                Mpoint.x, Mpoint.y,
                 coords.left, coords.top, coords.right, coords.bottom);
             if( tempDist < currentClosest ) {
                 currentClosest = tempDist;
                 closestElement = node;
-                angle = getBox2PointDirection(e.clientX, e.clientY,
+                angle = getBox2PointDirection(Mpoint.x, Mpoint.y,
                     coords.left, coords.top, coords.right, coords.bottom);
             }
         }
-        closestElement.style.outline = "1px dotted green";
-        if( !closestElement.isEmpty() ) {
+        if( closestElement ) {
+            closestElement.style.outline = "1px dotted green";
             insertGridField(document.querySelector('#'+KONST_ID_the_grid), gridCoordinates(closestElement, angle));
-            notes.textContent = `New Node: ${gridCoordinates(closestElement, angle)}, Element: "${closestElement.id}[${closestElement.className}]"`
+            notes.textContent = `New Node: ${gridCoordinates(closestElement, angle)}, Element: "${closestElement.id}[${closestElement.className}]"`;
         }
     }
 }
@@ -265,6 +273,20 @@ function insertGridField(target, coordinates) {
     info.style.outelineColor = invertColor(color);
     target.appendChild(brandNew);
     brandNew.fadeIn(600, "grid-item");
+}
+
+function spawnDragBox(el) {
+    let classes = ['corner_lt', 'border_t', 'corner_rt', 
+    'border_l', 'content_box', 'border_r', 'corner_lb', 'border_b', 'corner_rb'];
+    let contentBox = el.textContent;
+    el.innerHTML = "";
+    classes.forEach( function(item, idx ) {
+        let tempDiv = document.createElement('div');
+        tempDiv.className = item;
+        if( item === 'content_box' ) { tempDiv.textContent = contentBox;}
+        el.appendChild(tempDiv)
+    });
+
 }
 
 function getCoords(elem) {
@@ -305,9 +327,12 @@ function getBoxDistance2Point(Px, Py, Left, Top, Right, Bottom) {
 }
 
 function getBox2PointDirection(Px, Py, Left, Top, Right, Bottom) {
+    //if you use the mouse pointer as Px/Py, remember to adjust for scrolling
     let MidX = Left + (Right-Left)/2
     let MidY = Top + (Bottom-Top)/2
     let angle = Math.atan2(Py - MidY, Px - MidX) * 180 / Math.PI;
+    /*document.querySelector('#roterPunkt').style.left = Px;
+    document.querySelector('#roterPunkt').style.top = Py;*/
 
     let dir = 0;
 
@@ -353,7 +378,7 @@ function gridCoordinates(el, direction) {
 //tools and functionality
 
 Element.prototype.isEmpty = function() {
-    return this.innerHTML.trim() === "";
+    return this.innerHTML === "";
   }
 
   function randomColor() {
@@ -401,10 +426,10 @@ function invertColor(hex, bw = false) {
 //https://dev.to/bmsvieira/vanilla-js-fadein-out-2a6o
 //https://codepen.io/jorgemaiden/pen/xoRKWN
 Element.prototype.fadeOut = function(duration = 600, remove = false) {
-    var elementOfSurprise = this;
+    let elementOfSurprise = this;
     elementOfSurprise.style.opacity = 1;
-    var last = +new Date();
-    var nextTick = function () {
+    let last = +new Date();
+    let nextTick = function () {
         elementOfSurprise.style.opacity = +elementOfSurprise.style.opacity - (new Date() - last) / duration;
         last = +new Date();
         if( +elementOfSurprise.style.opacity > 0) {
@@ -418,12 +443,12 @@ Element.prototype.fadeOut = function(duration = 600, remove = false) {
 }
 
 Element.prototype.fadeIn = function(duration = 600, display = "block") {
-    var elementOfSurprise = this;
+    let elementOfSurprise = this;
     elementOfSurprise.style.opacity = 0;
     elementOfSurprise.style.display = display;
     
-    var last = +new Date();
-    var nextTick = function () {
+    let last = +new Date();
+    let nextTick = function () {
         elementOfSurprise.style.opacity = +elementOfSurprise.style.opacity + (new Date() - last) / duration;
         last = +new Date();
         if( +elementOfSurprise.style.opacity < 1) {

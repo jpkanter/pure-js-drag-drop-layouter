@@ -22,4 +22,7 @@ The idea is as follows: we got a number of elements that may or not may use up o
 
 ## examples
 
-To get this thing started i shopped around a bit and copied some examples that i am using as basics for my further testing. Those are one file html-files that can be displayed as it without any further script/style files. The main html file does need separate files.
+To get this thing started i shopped around a bit and copied some examples that i am using as basics for my further testing. Those are one file html-files that can be displayed as it without any further script/style files. The main html file does need separate files. 
+
+
+
