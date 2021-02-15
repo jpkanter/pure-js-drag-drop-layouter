@@ -69,8 +69,8 @@ div.dummyBlock {
     background: var(--black);
     outline: 1px dashed #FF06B5;
     outline-offset: -2px;
-    height: 45px;
-    width: 175px;
+    min-height: 45px;
+    min-width: 175px;
     display: inline-grid;
  }
 
@@ -88,6 +88,11 @@ div.dummyBlock {
     grid-gap: 0px;
     width: 164px;
     height: 34px;
+ }
+
+ .placeholder {
+    color: var(--grey4);
+    background: var(--grey2);
  }
 
  .content_box {

@@ -43,7 +43,7 @@ function dragStart(e) {
     e.preventDefault;
     
     if (e.target.parentElement !== e.currentTarget.parentElement) {
-        if( e.target.parentElement.className === "outer_box") {
+        if( e.target.parentElement.hasClass('outer_box')) {
             active = true;
             switch( e.target.className ) {
                 case 'corner_lt': activeMode = 1; break;
@@ -131,7 +131,19 @@ function dragEnd(e) {
 
       }
 
-    //clear empty fields:
+    //clear out placeholders
+    nodeList = document.querySelectorAll(`#${KONST_ID_repository} .outer_box`);
+    for( const field of nodeList) {
+        if( field.hasClass('placeholder') ) {
+            field.remove();
+        }
+    }
+    let newPlaceholder = document.createElement('div')
+    newPlaceholder.className = "outer_box placeholder";
+    newPlaceholder.innerText = "Platzhalter";
+    spawnDragBox(newPlaceholder);
+    document.querySelector(`#${KONST_ID_repository}`).appendChild(newPlaceholder);
+    //clear empty fields in target grid:
     nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
     for( const divField of nodeList ) {
         if( divField.isEmpty() && divField.id !== KONST_ID_default_target_area) {
@@ -267,7 +279,6 @@ function insertGridField(target, coordinates) {
     let brandNew = document.createElement('div')
     brandNew.className = "target_field";
     brandNew.style.gridArea = coordinates;
-    brandNew.id = coordinates;
     let color = randomColor();
     info.style.background = color
     info.style.outelineColor = invertColor(color);
@@ -377,11 +388,9 @@ function gridCoordinates(el, direction) {
 
 //tools and functionality
 
-Element.prototype.isEmpty = function() {
-    return this.innerHTML === "";
-  }
+function padZero(str, len) { len = len || 2; var zeros = new Array(len).join('0'); return (zeros + str).slice(-len); }
 
-  function randomColor() {
+function randomColor() {
     var letters = '0123456789ABCDEF';
     var color = '#';
     for (var i = 0; i < 6; i++) {
@@ -389,8 +398,6 @@ Element.prototype.isEmpty = function() {
     }
     return color;
 }
-
-function padZero(str, len) { len = len || 2; var zeros = new Array(len).join('0'); return (zeros + str).slice(-len); }
 
 function invertColor(hex, bw = false) {
     // https://stackoverflow.com/questions/35969656/how-can-i-generate-the-opposite-color-according-to-current-color
@@ -421,6 +428,15 @@ function invertColor(hex, bw = false) {
     return "#" + padZero(r) + padZero(g) + padZero(b);
 }
 
+//everytime i extend Element i have the dreading feeling that i am recreating jquery
+
+Element.prototype.hasClass = function(className) {
+    return this.classList.contains(className);
+}
+
+Element.prototype.isEmpty = function() {
+    return this.innerHTML === "";
+  }
 
 //took this as inspiration but made a prototype out of it 
 //https://dev.to/bmsvieira/vanilla-js-fadein-out-2a6o
