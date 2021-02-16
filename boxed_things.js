@@ -226,6 +226,11 @@ function setDimension(width = 0, height = 0, el) {
     if( height !== 0 ) { el.style.height = height; }
 }
 
+function setNote(text) {
+    let notes = document.querySelector('#notice_area');
+    notes.textContent = text;
+}
+
 function handleGridLayouter(e) {
     hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
     let overTarget = false;
@@ -242,7 +247,6 @@ function handleGridLayouter(e) {
     if( insideStaging && !overTarget ) {
         let staging = document.querySelector('#'+KONST_ID_staging_area);
         let nodeList = staging.querySelectorAll('.'+KONST_CLASS_target_area);
-        let notes = document.querySelector('#notice_area');
         let currentClosest = 40962048.0; //one of those magic numbers that hopes that the UltraHiDPI Display never gets invented
         let closestElement = null;
         let angle = 0.0;
@@ -264,17 +268,22 @@ function handleGridLayouter(e) {
         }
         if( closestElement ) {
             closestElement.style.outline = "1px dotted green";
-            insertGridField(document.querySelector('#'+KONST_ID_the_grid), gridCoordinates(closestElement, angle));
-            notes.textContent = `New Node: ${gridCoordinates(closestElement, angle)}, Element: "${closestElement.id}[${closestElement.className}]"`;
+            let newGridCoordinates = gridCoordinates(closestElement, angle)
+            let gridTest = gridCollisionCheck( document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
+            if( gridTest === 0 ) {
+                insertGridField(document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
+                setNote(`New Node: ${newGridCoordinates}, Element: "${closestElement.id}[${closestElement.className}]"`);
+            }
+            
         }
     }
 }
 
 function insertGridField(target, coordinates) {
-    if( coordinates.trim() === "" ) { return 0;}
+    if( coordinates.trim() === "" ) { return false;}
     let nodes = target.querySelectorAll('.target_field');
     for( const div of nodes) {
-        if( div.style.gridArea === coordinates ) { return 0;}
+        if( div.style.gridArea === coordinates ) { return false;}
     }
     let brandNew = document.createElement('div')
     brandNew.className = "target_field";
@@ -284,6 +293,77 @@ function insertGridField(target, coordinates) {
     info.style.outelineColor = invertColor(color);
     target.appendChild(brandNew);
     brandNew.fadeIn(600, "grid-item");
+}
+
+function gridCollisionCheck(container, newCoordinates) {
+    let dummyObject = document.createElement('div');
+    dummyObject.style.gridArea = newCoordinates;
+    let dummyDimensions = {
+        lx: parseInt(dummyObject.style.gridColumnStart),
+        ly: parseInt(dummyObject.style.gridRowStart),
+        rx: parseInt(dummyObject.style.gridColumnEnd),
+        ry: parseInt(dummyObject.style.gridRowEnd)
+    }
+    
+    for( const node of container.children ) {
+        //let overlap = 0;
+        let nodeDimensions = {
+            lx: parseInt(node.style.gridColumnStart),
+            ly: parseInt(node.style.gridRowStart),
+            rx: parseInt(node.style.gridColumnEnd),
+            ry: parseInt(node.style.gridRowEnd)
+        }
+
+        /*due the nature of grids and its full values we dont check for <=/>= cause 
+        the its okay to be edge to edge for a grid */
+
+        if( nodeDimensions.lx === dummyDimensions.lx && 
+            nodeDimensions.ly === dummyDimensions.ly &&
+            nodeDimensions.rx === dummyDimensions.rx &&
+            nodeDimensions.ry === dummyDimensions.ry )
+        { if( node.isEmpty() ) {return -1;} else {return -2;} }
+
+        /*Grids are a bit weird, they are rectangles with a zero width border (when seen as grid coordinates) 
+        that means they are not touching if their edges overlap, that means i need to adjust some 
+        treshhold conditions, like one rectangle being inside the other while having the exact 
+        coordinates of the walls, which is a really like case*/
+
+        if( nodeDimensions.lx <= dummyDimensions.lx &&
+            nodeDimensions.rx >= dummyDimensions.rx &&
+            nodeDimensions.ly <= dummyDimensions.ly &&
+            nodeDimensions.ry >= dummyDimensions.ry) 
+        {  if( node.isEmpty() ) {return 1;} else {return 2;} }
+        /*
+        So, a few words to this, the math behind this is quite simple, i must confess i still struggled a bit 
+        to wrap my hand around it all. So, every grid-element is a rectangle with a left-upper and right-lower corner
+        this checks if we can create a new rectangle in a grid with the given coordinates, originally i checked 
+        if our new rectangle cuts into any of the others, which grids do quite often cause they are defined by
+        corner points but with a border thickness of zero (not the css border), therefore the normal boundary
+        check does not work. I tried to mitigate that with greater than instead of greater equal than, but that
+        doesnt account for the case where alle 4 points are within another grid-item (cause its bigger than 1x1)
+        BUT, every new grid item is always 1x1, so i dont need to do the checks below (there is some error there anyway)
+        so i am not doing all the things below, but i am leaving this long note for you dear reader, whoever you are.
+        this is a public comment and it consumes to many delicious bytes, but sometimes i wish the world would write
+        more records like this, tiny novellas to describe the history of things
+        */
+        /*
+
+        if( dummyDimensions.lx > nodeDimensions.rx || 
+            nodeDimensions.lx > dummyDimensions.rx)
+        { overlap++;  }
+
+        if( dummyDimensions.ly > nodeDimensions.ry || 
+            nodeDimensions.ly > dummyDimensions.ry)
+        { overlap++; }
+
+        if( overlap > 1 ) { 
+            setNote(`boundary violation: ${nodeDimensions.lx};${nodeDimensions.ly}|${nodeDimensions.rx};${nodeDimensions.ry} ~~~ ${dummyDimensions.lx};${dummyDimensions.ly}|${dummyDimensions.rx};${dummyDimensions.ry}`);
+            if( node.isEmpty() ) {return 1;} else {return 2;} 
+        }
+        */
+
+    }
+    return 0;
 }
 
 function spawnDragBox(el) {
@@ -356,8 +436,15 @@ function getBox2PointDirection(Px, Py, Left, Top, Right, Bottom) {
     return dir;
 }
 
+/**
+ * Gives a CSS grid-area-value for a new field relative to a given grid-element.
+ * 
+ * @param {Element} el  an DOM element that got grid-element coordindates
+ * @param {number} direction     0 = left, 1 = right, 2 = top, 3 = bottom, literals possibles, eg: "right" or "r"
+ * 
+ * @return {string} grid-area-value: eg: "1 / 1 / 2 / 1"
+ */
 function gridCoordinates(el, direction) {
-    // 0 = left, 1 = right, 2 = top, 3 = bottom
     let others = {'l': 0, 'r': 1, 't': 2, 'b': 3,
             'left': 0, 'right': 1, 'top': 2, 'bottom': 3 }
     /*Object.keys(others).forEach(function(key, index) {
@@ -372,17 +459,15 @@ function gridCoordinates(el, direction) {
         right = isNaN(right) ? 0 : right;
     let bottom = parseInt(el.style.gridRowEnd);
         bottom = isNaN(bottom) ? 0 : bottom;
-    if( direction === 0 ) { //could have used switch instead, oh well...
-        return `${top} / ${left-1} /${bottom} / ${right-1} `; //ES6 feature, shouldnt be a problen in 2021 right?
-    }
-    else if( direction === 1) {
-        return `${top} / ${left+1} / ${bottom} / ${right+1}`;
-    }
-    else if( direction === 2 ) {
-        return `${top-1} / ${left} / ${bottom-1} / ${right}`;
-    }
-    else {
-        return `${top+1} / ${left} / ${bottom+1} / ${right}`;
+    switch( direction) {
+        case 0:
+            return `${top} / ${left-1} / ${top+1} / ${left}`;
+        case 1:
+            return `${bottom-1} / ${right} / ${bottom} / ${right+1}`;
+        case 2: 
+            return `${top-1} / ${left} / ${top} / ${left+1}`;
+        default:
+            return `${bottom} / ${right-1} / ${bottom+1} / ${right}`;
     }
 }
 
@@ -472,4 +557,39 @@ Element.prototype.fadeIn = function(duration = 600, display = "block") {
         }
     };
     nextTick();
+}
+
+/**
+ * Short function to move a grid-item in the column/x direction
+ * 
+ * @param {number} num  Number of Columns you want to move, negative possible but resulting Column cannot be smaller than 1
+ * @return {boolean}    True if the translation has succeded, false if it was impossible 
+ */
+Element.prototype.gridTranslateX = function(num) {
+    let currentColStart = parseInt(this.style.gridColumnStart);
+    let currentColEnd   = parseInt(this.style.gridColumnEnd);
+    if( currentColEnd + num < 1 || currentColStart + num < 1 ) {
+        return false;
+    } 
+    this.style.gridColumnStart = currentColStart + num;
+    this.style.gridColumnEnd = currentColEnd + num;
+    return true;
+}
+
+Element.prototype.gridTranslateY = function(num) {
+    let currentRowStart = parseInt(this.style.gridRowStart);
+    let currentRowEnd   = parseInt(this.style.gridRowEnd);
+    if( currentRowEnd + num < 1 || currentRowStart + num < 1 ) {
+        return false;
+    } 
+    this.style.gridRowStart = currentRowStart + num;
+    this.style.gridRowEnd = currentRowEnd + num;
+    return true;
+}
+
+Element.prototype.gridTranslateXY = function(x, y) {
+    if( this.gridTranslateX(x) ) {
+        return this.gridTranslateY(y);
+    }
+    return false;
 }
