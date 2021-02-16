@@ -165,12 +165,14 @@ function dragEnd(e) {
             moveBot = moveBot ? 1 : 0; 
             console.log(`Right: ${moveRight} - Bot: ${moveBot}`);
             for( const divNode of nodeList ) {
-                divNode.style.gridColumnStart = parseInt(divNode.style.gridColumnStart) + moveRight
+                divNode.gridTranslateXY(moveRight, moveBot);
+                /*divNode.style.gridColumnStart = parseInt(divNode.style.gridColumnStart) + moveRight
                 divNode.style.gridColumnEnd = parseInt(divNode.style.gridColumnEnd) + moveRight
                 divNode.style.gridRowStart = parseInt(divNode.style.gridRowStart) + moveBot
-                divNode.style.gridRowEnd = parseInt(divNode.style.gridRowEnd) + moveBot
+                divNode.style.gridRowEnd = parseInt(divNode.style.gridRowEnd) + moveBot*/
             }
         }
+        cleanUpGrid(document.querySelector(`#${KONST_ID_the_grid}`));
     }, 800); //anonymous function from above
     
     active = false;
@@ -274,6 +276,10 @@ function handleGridLayouter(e) {
                 insertGridField(document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
                 setNote(`New Node: ${newGridCoordinates}, Element: "${closestElement.id}[${closestElement.className}]"`);
             }
+            else if( Math.abs(gridTest) === 2) { //grid is already in place BUT not empty so we move everything
+                ShiftGrid(closestElement, angle)
+                insertGridField(document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
+            }
             
         }
     }
@@ -295,6 +301,84 @@ function insertGridField(target, coordinates) {
     brandNew.fadeIn(600, "grid-item");
 }
 
+/**
+ * Shifts part of the grid elements in one direction to make
+ * room for a new grid element, direction gives space
+ * 
+ * @param {Element} pivotElement    the element of which of the change starts
+ * @param {number} direction        the direction of change, 0:left, 1: right, 2: top, 3: bot
+ * 
+ * @return {boolean} true on succesful, false when encountering a problem
+ */
+function ShiftGrid(pivotElement, direction)
+{
+    let nodeList = pivotElement.parentElement.children;
+    let shiftX = 0; 
+    let shiftY = 0;
+    if( direction === 0 || direction === 1 ) {
+        shiftX = 1;
+    } else {
+        shiftY = 1;
+    }
+    if( direction === 0 || direction === 2 ) {
+        pX = parseInt(pivotElement.style.gridColumnStart);
+        pY = parseInt(pivotElement.style.gridRowStart);
+    }
+    else {
+        pX = parseInt(pivotElement.style.gridColumnEnd) + 1;
+        pY = parseInt(pivotElement.style.gridRowEnd) + 1;
+    }
+    for(const node of nodeList ) {
+        tX = parseInt(node.style.gridColumnStart);
+        tY = parseInt(node.style.gridRowStart);
+        if( tX >= pX) {
+            node.gridTranslateX(shiftX);
+        }
+        if( tY >= pY) {
+            node.gridTranslateY(shiftY);
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Removes empty columns & rows from a grid structure
+ * by compressing & manipulating those together
+ * 
+ * @param {Element} gridElement 
+ * 
+ * @return {boolean} True if something was cleaned up, if nothing happened
+ */
+function cleanUpGrid(gridElement) {
+    maxCol = gridElement.getComputedColumns();
+    maxRow = gridElement.getComputedRows();
+    //the grid starts at 2/2 cause 1/1 is reserved for new columns and has to be free
+    for(let x = 2; x <= maxCol; x++) { // checks for free columns
+        let y = 2;
+        let checkCoords = `${y} / ${x} / ${x+1} / ${y+1}`;
+        if( gridCollisionCheck(gridElement, checkCoords) === 0 ) { //free field
+            let actUpon = true;
+            for( y = 2; y <= maxRow; y++) {
+                let checkCoords = `${y} / ${x} / ${x+1} / ${y+1}`;
+                if( gridCollisionCheck(gridElement, checkCoords) !== 0 ) {
+                    actUpon = false;
+                    break;
+                }
+            }
+            if( actUpon ) {
+                let nodeList = gridElement.children;
+                for( const node of nodeList) {
+                    pX = parseInt(node.style.gridColumnStart);
+                    console.log(`[${maxCol};${maxRow}] \tpx ${pX}, x ${x}`);
+                    if( pX > x ) {
+                        node.gridTranslateX(-1);
+                    }
+                }
+            }
+        }
+    }
+}
 function gridCollisionCheck(container, newCoordinates) {
     let dummyObject = document.createElement('div');
     dummyObject.style.gridArea = newCoordinates;
@@ -343,7 +427,7 @@ function gridCollisionCheck(container, newCoordinates) {
         doesnt account for the case where alle 4 points are within another grid-item (cause its bigger than 1x1)
         BUT, every new grid item is always 1x1, so i dont need to do the checks below (there is some error there anyway)
         so i am not doing all the things below, but i am leaving this long note for you dear reader, whoever you are.
-        this is a public comment and it consumes to many delicious bytes, but sometimes i wish the world would write
+        this is a public comment and it consumes so many delicious bytes, but sometimes i wish the world would write
         more records like this, tiny novellas to describe the history of things
         */
         /*
@@ -592,4 +676,20 @@ Element.prototype.gridTranslateXY = function(x, y) {
         return this.gridTranslateY(y);
     }
     return false;
+}
+
+Element.prototype.getComputedColumns = function() {
+    let theGrid = window.getComputedStyle(this);
+    return theGrid.getPropertyValue("grid-template-columns")
+        .replace(/ 0px/g, "")
+        .split(" ")
+        .length;
+}
+
+Element.prototype.getComputedRows = function() {
+    let theGrid = window.getComputedStyle(this);
+    return theGrid.getPropertyValue("grid-template-rows")
+        .replace(/ 0px/g, "")
+        .split(" ")
+        .length;
 }
