@@ -1,5 +1,6 @@
 var active = false;
 var activeItem = null;
+var activeGrid = null;
 var activeMode = null;
 var container = null;
 
@@ -8,6 +9,8 @@ const KONST_ID_default_target_area = "target_area_default";
 const KONST_ID_staging_area = "resting_place";
 const KONST_ID_the_grid = "design_grid";
 const KONST_ID_repository = "grid_place";
+const KONST_WIDTH_dragbox = 164;
+const KONST_HEIGHT_dragbox = 30;
 
 docReady(function() {
     container = document.querySelector("#staging");
@@ -61,6 +64,8 @@ function dragStart(e) {
                     break;
             }
             activeItem = e.target.parentElement;
+            activeGrid = e.target.parentElement.parentElement; //this looks dirty
+            if( activeGrid.parentElement.id !== KONST_ID_the_grid ) { activeGrid = null;}
             //initialize vars
             if( activeItem !== null) {
                 if (!activeItem.xOffeset) {
@@ -84,7 +89,10 @@ function dragStart(e) {
                 document.querySelector('#grid_place').append(activeItem);
             }
             if( activeMode === 6 ) {
-                activeItem.initialX = e.clientX - activeItem.xOffset - activeItem.offsetWidth;
+                if( activeItem.parentElement.hasClass(KONST_CLASS_target_area) ) {
+                    MakeElementAbsolute(activeItem);
+                    activeItem.initialX = e.clientX - activeItem.xOffset - activeItem.offsetWidth;
+                }
             }
         }
     }
@@ -92,7 +100,6 @@ function dragStart(e) {
 }
 
 function dragEnd(e) {
-    var step_width = 164;
     var step_height = 30;
     let snapBack = true;
     if (activeItem !== null) {
@@ -106,12 +113,25 @@ function dragEnd(e) {
             for( const val of hoverElements ) {
                 if( val.className === KONST_CLASS_target_area ) {
                     val.appendChild(activeItem);
+                    if(activeGrid !== null && val !== activeGrid ) {
+                        setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
+                        console.log("snickers");
+                        if( activeGrid.id === KONST_ID_default_target_area ) {
+                            activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
+                            activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
+                        }
+                    }
                     snapBack = false;
                     break;
                 }
             }
             if( snapBack ) {
                 document.querySelector('#grid_place').append(activeItem);
+                setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
+                if( activeGrid !== null && activeGrid.id === KONST_ID_default_target_area ) {
+                    activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
+                    activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
+                }
             }
             activeItem.style = null;
         }
@@ -122,11 +142,14 @@ function dragEnd(e) {
         }
         
         if( activeMode === 6) { //snap to width
-            let newWidth = Math.round(activeItem.offsetWidth / step_width)*step_width
-            if( newWidth <= 0 ) { newWidth = step_width; }
-            setDimension(newWidth,0, activeItem);
-            contentBox = activeItem.querySelector('.content_box');
-            setDimension(newWidth-14, 0, contentBox);
+            let steps = Math.round(activeItem.offsetWidth / KONST_WIDTH_dragbox);
+            let newWidth = steps*KONST_WIDTH_dragbox
+            if( newWidth <= 0 ) { newWidth = KONST_WIDTH_dragbox; }
+            activeItem.style.position = "";
+            activeItem.style.left = "";
+            activeItem.style.top = "";
+            activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
+            setDragBoxDimension(activeItem, newWidth);
         }
 
       }
@@ -177,6 +200,7 @@ function dragEnd(e) {
     
     active = false;
     activeItem = null;
+    activeGrid = null;
     activeMode = null;
 }
 
@@ -211,7 +235,10 @@ function drag(e) {
 
         if( activeMode === 6 ) {
             let newWidth = e.clientX - activeItem.initialX;
-            setDimension(newWidth, 0, activeItem);
+            if( newWidth > KONST_WIDTH_dragbox ) {
+                activeItem.style.left = `${activeItem.addInfo.left - ((activeItem.addInfo.width-newWidth)/2)}px`;
+                setDimension(activeItem, newWidth, 0, );
+            }            
         } 
         
     }
@@ -223,14 +250,34 @@ function setTranslate(xPos, yPos, el) {
     el.style.top = yPos;
   }
 
-function setDimension(width = 0, height = 0, el) {
+function setDimension(el, width = 0, height = 0) {
     if( width !== 0 ) { el.style.width = width; }
     if( height !== 0 ) { el.style.height = height; }
+}
+
+function setDragBoxDimension(el, width = 0, height = 0) {
+    let magicBorder = 14
+    setDimension(el, width, height);
+    contentBox = el.querySelector('.content_box');
+    let innerWidth = width === 0 ? 0 : width - 14;
+    let innerHeight = height === 0 ? 0 : height - 14;
+    setDimension(contentBox, innerWidth, innerHeight);
 }
 
 function setNote(text) {
     let notes = document.querySelector('#notice_area');
     notes.textContent = text;
+}
+
+function MakeElementAbsolute(el) {
+    
+    //this only really works with grid elements
+    //https://webdesign.tutsplus.com/tutorials/the-quirks-of-css-grid-and-absolute-positioning--cms-31437
+    el.addInfo = {left: parseInt(el.offsetLeft), top: parseInt(el.offsetTop), 
+                    width: parseInt(el.offsetWidth), height: parseInt(el.offsetHeight)};
+    el.style.position = "absolute";
+    el.style.left = `${el.addInfo.left}px`;
+    el.style.top = `${el.addInfo.top}px`;
 }
 
 function handleGridLayouter(e) {
@@ -343,41 +390,65 @@ function ShiftGrid(pivotElement, direction)
 }
 
 /**
- * Removes empty columns & rows from a grid structure
- * by compressing & manipulating those together
+ * Removes empty columns & rows from a grid structure by compressing & manipulating those together
  * 
- * @param {Element} gridElement 
+ * It uses the gridCollisionCheck Method which in itself iterates through the entire grid
+ * i assume that this might be somewhat costly on bigger grids cause it does that for every
+ * probing grid-element of which n + m are used where n&m are the number of rows and columns
+ * the grid posseses (excluding the always empty 1/1 lanes). 
+ * 
+ * *Edit: i measured it, it took around a millisecond for 3 empty lanes on a 9750H with FF 86.0*
+ * 
+ * @param {Element} gridElement probably a div that has **display: grid** and contains grid-items
  * 
  * @return {boolean} True if something was cleaned up, if nothing happened
  */
 function cleanUpGrid(gridElement) {
-    maxCol = gridElement.getComputedColumns();
-    maxRow = gridElement.getComputedRows();
+    //the only time i am using 'var' in this, let would have worked just well but i am nostalgic
+    var maxCol = gridElement.getComputedColumns();
+    var maxRow = gridElement.getComputedRows();
+    var workDone = 0;
     //the grid starts at 2/2 cause 1/1 is reserved for new columns and has to be free
-    for(let x = 2; x <= maxCol; x++) { // checks for free columns
+    /* Free Column Check */
+    for(let x = 2; x <= maxCol; x++) { 
         let y = 2;
-        let checkCoords = `${y} / ${x} / ${x+1} / ${y+1}`;
+        let checkCoords = `${y} / ${x} / ${y+1} / ${x+1}`;
         if( gridCollisionCheck(gridElement, checkCoords) === 0 ) { //free field
             let actUpon = true;
             for( y = 2; y <= maxRow; y++) {
-                let checkCoords = `${y} / ${x} / ${x+1} / ${y+1}`;
-                if( gridCollisionCheck(gridElement, checkCoords) !== 0 ) {
-                    actUpon = false;
-                    break;
-                }
+                let checkCoords = `${y} / ${x} / ${y+1} / ${x+1}`;
+                if( gridCollisionCheck(gridElement, checkCoords) !== 0 ) { actUpon = false; break; }
             }
             if( actUpon ) {
                 let nodeList = gridElement.children;
                 for( const node of nodeList) {
                     pX = parseInt(node.style.gridColumnStart);
-                    console.log(`[${maxCol};${maxRow}] \tpx ${pX}, x ${x}`);
-                    if( pX > x ) {
-                        node.gridTranslateX(-1);
-                    }
+                    if( pX > x ) { node.gridTranslateX(-1); workDone++;}
                 }
             }
         }
     }
+    /* Free Row Check */
+    for(let y = 2; y <= maxRow; y++) { 
+        let x = 2;
+        let checkCoords = `${y} / ${x} / ${y+1} / ${x+1}`;
+        if( gridCollisionCheck(gridElement, checkCoords) === 0 ) { 
+            let actUpon = true;
+            for( x = 2; x <= maxCol; x++) {
+                let checkCoords = `${y} / ${x} / ${y+1} / ${x+1}`;
+                if( gridCollisionCheck(gridElement, checkCoords) !== 0 ) { actUpon = false; break; }
+            }
+            if( actUpon ) {
+                let nodeList = gridElement.children;
+                for( const node of nodeList) {
+                    pY = parseInt(node.style.gridRowStart);
+                    if( pY > y ) { node.gridTranslateY(-1); workDone++;}
+                }
+            }
+        }
+    }
+    if( workDone >= 0 ) { return true;}
+    else { return false;}
 }
 function gridCollisionCheck(container, newCoordinates) {
     let dummyObject = document.createElement('div');
@@ -598,6 +669,9 @@ function invertColor(hex, bw = false) {
 }
 
 //everytime i extend Element i have the dreading feeling that i am recreating jquery
+// http://perfectionkills.com/whats-wrong-with-extending-the-dom/
+// it seems when IE hasnt died in the hellfire it always deserved this was a problem:
+// although, dont manipulate objects you do not own, hrr
 
 Element.prototype.hasClass = function(className) {
     return this.classList.contains(className);
@@ -660,6 +734,9 @@ Element.prototype.gridTranslateX = function(num) {
     return true;
 }
 
+/**i would like to check if the new coordinates clash with any other
+grid element already present but for that i had to check the entire 
+grid which sounds somewhat expensive so i dont do that*/
 Element.prototype.gridTranslateY = function(num) {
     let currentRowStart = parseInt(this.style.gridRowStart);
     let currentRowEnd   = parseInt(this.style.gridRowEnd);
