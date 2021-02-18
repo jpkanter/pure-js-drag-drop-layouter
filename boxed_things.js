@@ -10,7 +10,7 @@ const KONST_ID_staging_area = "resting_place";
 const KONST_ID_the_grid = "design_grid";
 const KONST_ID_repository = "grid_place";
 const KONST_WIDTH_dragbox = 164;
-const KONST_HEIGHT_dragbox = 30;
+const KONST_HEIGHT_dragbox = 34;
 
 docReady(function() {
     container = document.querySelector("#staging");
@@ -91,7 +91,13 @@ function dragStart(e) {
             if( activeMode === 6 ) {
                 if( activeItem.parentElement.hasClass(KONST_CLASS_target_area) ) {
                     MakeElementAbsolute(activeItem);
-                    activeItem.initialX = e.clientX - activeItem.xOffset - activeItem.offsetWidth;
+                    activeItem.initialX = e.clientX - activeItem.offsetWidth;
+                }
+            }
+            if( activeMode === 7 ) {
+                if( activeItem.parentElement.hasClass(KONST_CLASS_target_area) ) {
+                    MakeElementAbsolute(activeItem); 
+                    activeItem.initialY = e.clientY - activeItem.offsetHeight;
                 }
             }
         }
@@ -115,7 +121,6 @@ function dragEnd(e) {
                     val.appendChild(activeItem);
                     if(activeGrid !== null && val !== activeGrid ) {
                         setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
-                        console.log("snickers");
                         if( activeGrid.id === KONST_ID_default_target_area ) {
                             activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
                             activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
@@ -148,8 +153,30 @@ function dragEnd(e) {
             activeItem.style.position = "";
             activeItem.style.left = "";
             activeItem.style.top = "";
-            activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
-            setDragBoxDimension(activeItem, newWidth);
+            if( gridCheckLineCollision(activeItem.parentElement, "right", steps-1) ) {
+                activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
+                setDragBoxDimension(activeItem, newWidth);
+                setDimension(activeItem, newWidth, 0);
+            }
+            else {
+                setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
+            }
+        }
+        if( activeMode === 7) { //snap to height
+            let steps = Math.round(activeItem.offsetHeight / KONST_HEIGHT_dragbox);
+            let newHeight = steps*KONST_HEIGHT_dragbox
+            if( newHeight <= 0 ) { newHeight = KONST_HEIGHT_dragbox; }
+            activeItem.style.position = "";
+            activeItem.style.left = "";
+            activeItem.style.top = "";
+            if( gridCheckLineCollision(activeItem.parentElement, "bottom", steps-1) ) {
+                activeItem.parentElement.style.gridRowEnd = parseInt(activeItem.parentElement.style.gridRowStart) + steps
+                setDragBoxDimension(activeItem, 0, newHeight);
+                setDimension(activeItem, 0, newHeight);
+            }
+            else {
+                setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
+            }
         }
 
       }
@@ -237,7 +264,14 @@ function drag(e) {
             let newWidth = e.clientX - activeItem.initialX;
             if( newWidth > KONST_WIDTH_dragbox ) {
                 activeItem.style.left = `${activeItem.addInfo.left - ((activeItem.addInfo.width-newWidth)/2)}px`;
-                setDimension(activeItem, newWidth, 0, );
+                setDimension(activeItem, newWidth, 0 );
+            }            
+        } 
+        if( activeMode === 7 ) {
+            let newHeight = e.clientY - activeItem.initialY;
+            if( newHeight > KONST_HEIGHT_dragbox ) {
+                activeItem.style.top = `${activeItem.addInfo.top - ((activeItem.addInfo.height-newHeight)/2)}px`;
+                setDimension(activeItem, 0, newHeight);
             }            
         } 
         
@@ -276,6 +310,7 @@ function MakeElementAbsolute(el) {
     el.addInfo = {left: parseInt(el.offsetLeft), top: parseInt(el.offsetTop), 
                     width: parseInt(el.offsetWidth), height: parseInt(el.offsetHeight)};
     el.style.position = "absolute";
+    el.style.zIndex = 15;
     el.style.left = `${el.addInfo.left}px`;
     el.style.top = `${el.addInfo.top}px`;
 }
@@ -521,6 +556,58 @@ function gridCollisionCheck(container, newCoordinates) {
     return 0;
 }
 
+function gridCheckLineCollision(sourceElement, direction, iterations = 1) {
+    let others = {'l': 0, 'r': 1, 't': 2, 'b': 3,
+            'left': 0, 'right': 1, 'top': 2, 'bottom': 3 }
+    Object.keys(others).forEach(function(key, index) {
+        if( direction === key ) { direction = this[key]; return true;} }, others); 
+    
+    //some sanity checks
+    iterations = iterations <= 0 ? 1 : iterations;
+    iterations = iterations >= 10 ? 10 : iterations;
+    let parent = sourceElement.parentElement;
+    let colStart = parseInt(sourceElement.style.gridColumnStart);
+    let colEnd = parseInt(sourceElement.style.gridColumnEnd);
+    let rowStart = parseInt(sourceElement.style.gridRowStart);
+    let rowEnd = parseInt(sourceElement.style.gridRowEnd);
+    let x = 0; let y = 0; //init
+    for( let i = 0; i < iterations; i++) {
+        switch( direction ) {
+            case 0: //left
+                x = colStart - 1 - i;
+                if( x < 1 ) { return false; }
+                for(y = rowStart; y < rowEnd; y++) {
+                    if( gridCollisionCheck(parent, `${y} / ${x} / ${y+1} / ${x+1}`) !== 0 ) {return false;}
+                }
+                break;
+            case 1: //right
+                x = colEnd + i;
+                if( x < 1 ) { return false; } //should never be a problem in plus direction
+                for(y = rowStart; y < rowEnd; y++) {
+                    if( gridCollisionCheck(parent, `${y} / ${x} / ${y+1} / ${x+1}`) !== 0 ) {return false;}
+                }
+                break;
+            case 2: //top
+                y = rowStart - 1 - i;
+                if( y < 1 ) { return false; }
+                for(x = colStart; x < colEnd; x++) {
+                    if( gridCollisionCheck(parent, `${y} / ${x} / ${y+1} / ${x+1}`) !== 0 ) {return false;}
+                }
+                break;
+            case 3: //bottom
+                y = rowEnd + i;
+                if( y < 1 ) { return false; } // again "unpossible"
+                for(x = colStart; x < colEnd; x++) {
+                    if( gridCollisionCheck(parent, `${y} / ${x} / ${y+1} / ${x+1}`) !== 0 ) {return false;}
+                }
+                break;
+            default:
+                return false;
+        }
+    }
+    return true;
+}
+
 function spawnDragBox(el) {
     let classes = ['corner_lt', 'border_t', 'corner_rt', 
     'border_l', 'content_box', 'border_r', 'corner_lb', 'border_b', 'corner_rb'];
@@ -602,8 +689,8 @@ function getBox2PointDirection(Px, Py, Left, Top, Right, Bottom) {
 function gridCoordinates(el, direction) {
     let others = {'l': 0, 'r': 1, 't': 2, 'b': 3,
             'left': 0, 'right': 1, 'top': 2, 'bottom': 3 }
-    /*Object.keys(others).forEach(function(key, index) {
-        if( direction === key ) { direction = this[key]; return true;} }, others); */
+    Object.keys(others).forEach(function(key, index) {
+        if( direction === key ) { direction = this[key]; return true;} }, others); 
     //sometimes i have the feeling i am doing things to complicated
 
     let left = parseInt(el.style.gridColumnStart);
