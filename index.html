@@ -7,7 +7,64 @@
      <body>
          <div class="main">
              <h1>Javascript Snatch to things</h1>
+             <h2>Items in Grid</h2>
+             <form name="editCollectioNRearrange" action="/typo3/index.php?M=web_SparqlToucanSparqlbackend&amp;moduleToken=0ec75c53601a4720fcc585df1e698a2eb48f2f24&amp;tx_sparqltoucan_web_sparqltoucansparqlbackend%5Baction%5D=editCollectionRearrange&amp;tx_sparqltoucan_web_sparqltoucansparqlbackend%5Bcontroller%5D=Backend" method="post">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][@extension]" value="SparqlToucan">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][@vendor]" value="Ubl">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][@controller]" value="Backend">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][@action]" value="editCollectionDynamicLayout">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][arguments]" value="YTozOntzOjEwOiJjb2xsZWN0aW9uIjtzOjE6IjYiO3M6NjoiYWN0aW9uIjtzOjI3OiJlZGl0Q29sbGVjdGlvbkR5bmFtaWNMYXlvdXQiO3M6MTA6ImNvbnRyb2xsZXIiO3M6NzoiQmFja2VuZCI7fQ==6520fa55244e4e29c8a3d12d242682139642b113">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__referrer][@request]" value="a:4:{s:10:&quot;@extension&quot;;s:12:&quot;SparqlToucan&quot;;s:11:&quot;@controller&quot;;s:7:&quot;Backend&quot;;s:7:&quot;@action&quot;;s:27:&quot;editCollectionDynamicLayout&quot;;s:7:&quot;@vendor&quot;;s:3:&quot;Ubl&quot;;}b2dae0416e7026cd4832d4cb2f7426e270cf776f">
+                <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[__trustedProperties]" value="a:1:{s:23:&quot;editCollectioNRearrange&quot;;a:7:{i:24;i:1;i:25;i:1;i:26;i:1;i:27;i:1;i:28;i:1;i:29;i:1;i:38;i:1;}}fc68c3b8666ba1a6805a4e6335870f0adbe9ed0c">
+                <div class="dummyBlock">
+                    <div class="target_grid" id="design_grid">
+                        <div style="grid-area: 1    /   1   /  2  / 3">Bibliothek Klassische Archäologie und Ur- und Frühgeschichte
+                            <em>Bibo Label 1</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][24]" value="1    /   1   /  2  / 3">
+                        </div>
+                        <div style="grid-area: 4    /   1   /  5  / 3">dagobert@entenhausen.dk
+                            <em>&gt;&gt; p://schema.org/email</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][25]" value="4    /   1   /  5  / 3">
+                        </div>
+                        <div style="grid-area: 5    /   1   /  6  / 3">+99 152 2312 543
+                            <em>&gt;&gt; schema.org/telephone</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][26]" value="5    /   1   /  6  / 3">
+                        </div>
+                        <div style="grid-area: 2    /   1   /  3  / 3">Geldspeicher Str. 12
+                            <em>&gt;&gt; ma.org/streetAddress</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][27]" value="2    /   1   /  3  / 3">
+                        </div>
+                        <div style="grid-area: 3    /   1   /  4  / 2">55152
+                            <em>&gt;&gt; chema.org/postalCode</em>
+        
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][28]" value="3    /   1   /  4  / 2">
+                        </div>
+                        <div style="grid-area: 3    /   2   /  4  / 3">Entenhausen
+                            <em>&gt;&gt; .org/addressLocality</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][29]" value="3    /   2   /  4  / 3">
+                        </div>
+                        <div style="grid-area: 6    /   1   /  7  / 3">postal adress
+                            <em>[static]</em>
+                            <input type="hidden" name="tx_sparqltoucan_web_sparqltoucansparqlbackend[editCollectioNRearrange][38]" value="6    /   1   /  7  / 3">
+                        </div>
+                    </div>
+                </div>
+                
+
+            <h2>Items without Grid</h2>
+                <!--Area without grid interaction-->
+                <div class="tx_sparqltoucan_layouter_free">
+                    <div id="grid_place" class="grid">
+
+                    </div>
+                </div>
+                <input type="submit" value="Save">
+            </form>
+
              <div id="staging" class="staging_area">
+                 <!--
+
+                 
                 <div id="resting_place" class="resting">
                     <div class="dummyBlock">
                         <div class="target_grid" id="design_grid">
@@ -15,23 +72,9 @@
                         </div>
                     </div>
                 </div>
+                -->
                 <div id="notice_area">notice_area</div>
                 <div id="info_area">info_area</div>
-                 <div id="grid_place" class="grid">
-
-                    <div class="outer_box"><b>Onkel Dagoberts Geldspeicher</b></div>
-
-                    <div class="outer_box">Zum Geldspeicher 3</div>
-
-                    <div class="outer_box">9212 Entenhausen</div>
-
-                    <div class="outer_box">120 8342 9142</div>
-
-                    <div class="outer_box">mailAdress@contoso.com</div>
-
-                    <div class="outer_box placeholder">Platzhalter</div>
-                    
-                 </div>
              </div>
          </div>
          <h2 id="position_thingy"><em>This is empty</em></h2>

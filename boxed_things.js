@@ -24,11 +24,26 @@ docReady(function() {
             .innerHTML = "<pre>[" + container.offsetLeft + "|" + container.offsetTop + "]</pre>";
     info = document.querySelector('#info_area');
     let color = randomColor();
-    info.style.background = color
+    info.style.background = color;
     info.style.color = invertColor(color, true);
     let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .outer_box`)
     for( const box of dragBoxes) {
         spawnDragBox(box);
+    }
+    let setBoxes = document.querySelectorAll(`#${KONST_ID_the_grid} > div`);
+    console.log(setBoxes);
+    let doOnce = true;
+    for( const box of setBoxes ) {
+        let dragBox = box.innerHTML;
+        box.innerHTML = "";
+        box.className = "target_field"
+        box.gridTranslateXY(1,1);
+        if( doOnce ) { box.id = "target_area_default"; doOnce = false; }
+        let seedBox = document.createElement("div");
+        seedBox.className = "outer_box";
+        seedBox.innerHTML = dragBox;
+        box.append(seedBox);
+        spawnDragBox(seedBox);
     }
 });
 
@@ -41,6 +56,19 @@ function docReady(fn) {
         document.addEventListener("DOMContentLoaded", fn);
     }
 }    
+
+function spawnDragBox(el) {
+    let classes = ['corner_lt', 'border_t', 'corner_rt', 
+    'border_l', 'content_box', 'border_r', 'corner_lb', 'border_b', 'corner_rb'];
+    let contentBox = el.innerHTML;
+    el.innerHTML = "";
+    classes.forEach( function(item, idx ) {
+        let tempDiv = document.createElement('div');
+        tempDiv.className = item;
+        if( item === 'content_box' ) { tempDiv.innerHTML = contentBox;}
+        el.appendChild(tempDiv)
+    });
+}
 
 function dragStart(e) {
     e.preventDefault;
@@ -608,20 +636,6 @@ function gridCheckLineCollision(sourceElement, direction, iterations = 1) {
     return true;
 }
 
-function spawnDragBox(el) {
-    let classes = ['corner_lt', 'border_t', 'corner_rt', 
-    'border_l', 'content_box', 'border_r', 'corner_lb', 'border_b', 'corner_rb'];
-    let contentBox = el.textContent;
-    el.innerHTML = "";
-    classes.forEach( function(item, idx ) {
-        let tempDiv = document.createElement('div');
-        tempDiv.className = item;
-        if( item === 'content_box' ) { tempDiv.textContent = contentBox;}
-        el.appendChild(tempDiv)
-    });
-
-}
-
 function getCoords(elem) {
     // https://javascript.info/coordinates
     let box = elem.getBoundingClientRect();
@@ -714,6 +728,36 @@ function gridCoordinates(el, direction) {
 }
 
 //tools and functionality
+
+/** recursiveHit
+ * 
+ * Checks if somewhere in the Tree down to the root is an element with one of 
+ * the desired classes.
+ * 
+ * @param {Element} el 
+ * @param {[]} classList 
+ * @param {number} maxIteration = 25
+ * 
+ * @return {boolean}
+ */
+function recursiveHit(el, classList, maxIteration = 25) {
+    recursor = el;
+    for( let i = 0; i < maxIteration; i++ ) {
+        let parentClasses = recursor.parentElement.classList;
+        if( recursor.parentElement.tagName === "HTML" ) {
+            return false;
+        }
+        for ( const parentClass of parentClasses ) {
+            for( const warrantClass of classList ) {
+                if( parentClass === warrantClass ) {
+                    return true;
+                }
+            }
+        }
+        recursor = recursor.parentElement;
+    }
+    return false;
+}
 
 function padZero(str, len) { len = len || 2; var zeros = new Array(len).join('0'); return (zeros + str).slice(-len); }
 
