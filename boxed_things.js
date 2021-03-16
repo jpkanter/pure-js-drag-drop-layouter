@@ -5,6 +5,7 @@ var activeMode = null;
 var container = null;
 
 const KONST_CLASS_target_area = "target_field";
+const KONST_CLASS_outer_box = "outer_box";
 const KONST_ID_default_target_area = "target_area_default";
 const KONST_ID_staging_area = "resting_place";
 const KONST_ID_the_grid = "design_grid";
@@ -20,13 +21,7 @@ docReady(function() {
     container.addEventListener("touchstart", dragStart, false);
     container.addEventListener("touchend", dragEnd, false);
     container.addEventListener("touchmove", drag, false);
-    document.querySelector('#position_thingy')
-            .innerHTML = "<pre>[" + container.offsetLeft + "|" + container.offsetTop + "]</pre>";
-    info = document.querySelector('#info_area');
-    let color = randomColor();
-    info.style.background = color;
-    info.style.color = invertColor(color, true);
-    let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .outer_box`)
+    let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .${KONST_CLASS_outer_box}`)
     for( const box of dragBoxes) {
         spawnDragBox(box);
     }
@@ -36,10 +31,10 @@ docReady(function() {
         let dragBox = box.innerHTML;
         box.innerHTML = "";
         box.className = "target_field"
-        box.gridTranslateXY(1,1);
+        tou_gridTranslateXY(box, 1,1);
         if( doOnce ) { box.id = "target_area_default"; doOnce = false; }
         let seedBox = document.createElement("div");
-        seedBox.className = "outer_box";
+        seedBox.className = KONST_CLASS_outer_box;
         seedBox.innerHTML = dragBox;
         box.appendChild(seedBox);
         spawnDragBox(seedBox);
@@ -76,7 +71,7 @@ function spawnDragBox(el) {
 function dragStart(e) {
     e.preventDefault;
     if (e.target.parentElement !== e.currentTarget.parentElement) {
-        if( recursiveCheck(e.target, ["outer_box"])) {
+        if( recursiveCheck(e.target, [KONST_CLASS_outer_box])) {
             active = true;
             switch( e.target.className ) {
                 case 'corner_lt': activeMode = 1; break;
@@ -94,7 +89,7 @@ function dragStart(e) {
                     break;
             }
             try {
-                activeItem = recursiveSelect(e.target, "outer_box")
+                activeItem = recursiveSelect(e.target, KONST_CLASS_outer_box)
             } catch(e) {
                 activeItem = null;
                 active = false;
@@ -126,13 +121,13 @@ function dragStart(e) {
                 document.querySelector('#grid_place').append(activeItem);
             }
             if( activeMode === 6 ) {
-                if( activeItem.parentElement.hasClass(KONST_CLASS_target_area) ) {
+                if( activeItem.parentElement.tou_hasClass(KONST_CLASS_target_area) ) {
                     MakeElementAbsolute(activeItem);
                     activeItem.initialX = e.clientX - activeItem.offsetWidth;
                 }
             }
             if( activeMode === 7 ) {
-                if( activeItem.parentElement.hasClass(KONST_CLASS_target_area) ) {
+                if( activeItem.parentElement.tou_hasClass(KONST_CLASS_target_area) ) {
                     MakeElementAbsolute(activeItem); 
                     activeItem.initialY = e.clientY - activeItem.offsetHeight;
                 }
@@ -179,8 +174,8 @@ function dragEnd(e) {
         }
 
         if( activeMode === 1) {
-            activeItem.fadeOut(1200)
-            setTimeout(activeItem.fadeIn(1200, "grid"), 2500);
+            tou_fadeOut(activeItem, 1200)
+            setTimeout(tou_fadeIn(activeItem, 1200, "grid"), 2500);
         }
         
         if( activeMode === 6) { //snap to width
@@ -219,14 +214,14 @@ function dragEnd(e) {
       }
 
     //clear out placeholders
-    nodeList = document.querySelectorAll(`#${KONST_ID_repository} .outer_box`);
+    nodeList = document.querySelectorAll(`#${KONST_ID_repository} .${KONST_CLASS_outer_box}`);
     for( const field of nodeList) {
-        if( field.hasClass('placeholder') ) {
+        if( field.tou_hasClass('placeholder') ) {
             field.remove();
         }
     }
     let newPlaceholder = document.createElement('div')
-    newPlaceholder.className = "outer_box placeholder";
+    newPlaceholder.className = KONST_CLASS_outer_box + " placeholder";
     newPlaceholder.innerText = "Platzhalter";
     spawnDragBox(newPlaceholder);
     document.querySelector(`#${KONST_ID_repository}`).appendChild(newPlaceholder);
@@ -234,14 +229,13 @@ function dragEnd(e) {
     //&&update internal form fields
     nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
     for( const divField of nodeList ) {
-        if( divField.isEmpty() && divField.id !== KONST_ID_default_target_area) {
-            divField.fadeOut(600, true);
+        if( divField.tou_isEmpty() && divField.id !== KONST_ID_default_target_area) {
+            tou_fadeOut(divField, 600, true);
             continue;
         }
-        else{ 
+        else{ // in case of major changes this is a likely source of problems cause it selects any one input per div
             let boxInput = divField.querySelector(`input`);
             if( boxInput !== null ) {
-                console.log(boxInput);
                 boxInput.value = divField.style.gridArea;
             }
             
@@ -260,9 +254,8 @@ function dragEnd(e) {
         if( moveRight || moveBot ) {
             moveRight = moveRight ? 1 : 0;
             moveBot = moveBot ? 1 : 0; 
-            console.log(`Right: ${moveRight} - Bot: ${moveBot}`);
             for( const divNode of nodeList ) {
-                divNode.gridTranslateXY(moveRight, moveBot);
+                tou_gridTranslateXY(divNode, moveRight, moveBot);
                 /*divNode.style.gridColumnStart = parseInt(divNode.style.gridColumnStart) + moveRight
                 divNode.style.gridColumnEnd = parseInt(divNode.style.gridColumnEnd) + moveRight
                 divNode.style.gridRowStart = parseInt(divNode.style.gridRowStart) + moveBot
@@ -282,9 +275,6 @@ function drag(e) {
     if( active ) {
 
         e.preventDefault();
-
-        document.querySelector('#position_thingy')
-                .innerHTML = `<pre>[${e.clientX}|${e.clientY}]</pre>`;
                 
         if( activeMode === 0 ) {
             if (e.type === "touchmove") {
@@ -384,7 +374,7 @@ function handleGridLayouter(e) {
         //correct for page scroll:
         Mpoint = {x: e.clientX + window.pageXOffset, y: e.clientY + window.pageYOffset};
         for( const node of nodeList) {
-            if( node.isEmpty() ) { continue; }
+            if( node.tou_isEmpty() ) { continue; }
             node.style.outline = "1px dashed #FF06B5";
             let coords = getCoords(node);
             let tempDist = getBoxDistance2Point(
@@ -423,11 +413,8 @@ function insertGridField(target, coordinates) {
     let brandNew = document.createElement('div')
     brandNew.className = "target_field";
     brandNew.style.gridArea = coordinates;
-    let color = randomColor();
-    info.style.background = color
-    info.style.outelineColor = invertColor(color);
     target.appendChild(brandNew);
-    brandNew.fadeIn(600, "grid-item");
+    tou_fadeIn(brandNew, 600, "grid-item");
 }
 
 /**
@@ -461,10 +448,10 @@ function ShiftGrid(pivotElement, direction)
         tX = parseInt(node.style.gridColumnStart);
         tY = parseInt(node.style.gridRowStart);
         if( tX >= pX) {
-            node.gridTranslateX(shiftX);
+            tou_gridTranslateX(node,shiftX);
         }
         if( tY >= pY) {
-            node.gridTranslateY(shiftY);
+            tou_gridTranslateY(node, shiftY);
         }
     }
 
@@ -487,8 +474,8 @@ function ShiftGrid(pivotElement, direction)
  */
 function cleanUpGrid(gridElement) {
     //the only time i am using 'var' in this, let would have worked just well but i am nostalgic
-    var maxCol = gridElement.getComputedColumns();
-    var maxRow = gridElement.getComputedRows();
+    var maxCol = tou_getComputedColumns(gridElement);
+    var maxRow = tou_getComputedRows(gridElement);
     var workDone = 0;
     //the grid starts at 2/2 cause 1/1 is reserved for new columns and has to be free
     /* Free Column Check */
@@ -505,7 +492,7 @@ function cleanUpGrid(gridElement) {
                 let nodeList = gridElement.children;
                 for( const node of nodeList) {
                     pX = parseInt(node.style.gridColumnStart);
-                    if( pX > x ) { node.gridTranslateX(-1); workDone++;}
+                    if( pX > x ) { tou_gridTranslateX(node, -1); workDone++;}
                 }
             }
         }
@@ -524,7 +511,7 @@ function cleanUpGrid(gridElement) {
                 let nodeList = gridElement.children;
                 for( const node of nodeList) {
                     pY = parseInt(node.style.gridRowStart);
-                    if( pY > y ) { node.gridTranslateY(-1); workDone++;}
+                    if( pY > y ) { tou_gridTranslateY(node, -1); workDone++;}
                 }
             }
         }
@@ -558,7 +545,7 @@ function gridCollisionCheck(container, newCoordinates) {
             nodeDimensions.ly === dummyDimensions.ly &&
             nodeDimensions.rx === dummyDimensions.rx &&
             nodeDimensions.ry === dummyDimensions.ry )
-        { if( node.isEmpty() ) {return -1;} else {return -2;} }
+        { if( node.tou_isEmpty() ) {return -1;} else {return -2;} }
 
         /*Grids are a bit weird, they are rectangles with a zero width border (when seen as grid coordinates) 
         that means they are not touching if their edges overlap, that means i need to adjust some 
@@ -569,7 +556,7 @@ function gridCollisionCheck(container, newCoordinates) {
             nodeDimensions.rx >= dummyDimensions.rx &&
             nodeDimensions.ly <= dummyDimensions.ly &&
             nodeDimensions.ry >= dummyDimensions.ry) 
-        {  if( node.isEmpty() ) {return 1;} else {return 2;} }
+        {  if( node.tou_isEmpty() ) {return 1;} else {return 2;} }
         /*
         So, a few words to this, the math behind this is quite simple, i must confess i still struggled a bit 
         to wrap my hand around it all. So, every grid-element is a rectangle with a left-upper and right-lower corner
@@ -595,7 +582,7 @@ function gridCollisionCheck(container, newCoordinates) {
 
         if( overlap > 1 ) { 
             setNote(`boundary violation: ${nodeDimensions.lx};${nodeDimensions.ly}|${nodeDimensions.rx};${nodeDimensions.ry} ~~~ ${dummyDimensions.lx};${dummyDimensions.ly}|${dummyDimensions.rx};${dummyDimensions.ry}`);
-            if( node.isEmpty() ) {return 1;} else {return 2;} 
+            if( node.tou_isEmpty() ) {return 1;} else {return 2;} 
         }
         */
 
@@ -706,8 +693,6 @@ function getBox2PointDirection(Px, Py, Left, Top, Right, Bottom) {
     else if ( angle >= -45.0 && angle < 45.0 ) { dir = 1; }
     else if ( angle >= 45.0 && angle < 135.0 ) { dir = 3; }
     else { dir = 0;}
-    let temp = document.querySelector('#info_area')
-    temp.innerHTML = `${angle.toFixed(2)}(${typeof(angle)}) -> ${dir}`;
     return dir;
 }
 
@@ -800,64 +785,24 @@ function recursiveSelect(el, searchClass, maxIteration = 25 ) {
     throw 'no hit but iteration limit'
 }
 
-function padZero(str, len) { len = len || 2; var zeros = new Array(len).join('0'); return (zeros + str).slice(-len); }
-
-function randomColor() {
-    var letters = '0123456789ABCDEF';
-    var color = '#';
-    for (var i = 0; i < 6; i++) {
-         color += letters[Math.floor(Math.random() * 16)];
-    }
-    return color;
-}
-
-function invertColor(hex, bw = false) {
-    // https://stackoverflow.com/questions/35969656/how-can-i-generate-the-opposite-color-according-to-current-color
-    if (hex.indexOf('#') === 0) {
-        hex = hex.slice(1);
-    }
-    // convert 3-digit hex to 6-digits.
-    if (hex.length === 3) {
-        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
-    }
-    if (hex.length !== 6) {
-        throw new Error('Invalid HEX color.');
-    }
-    var r = parseInt(hex.slice(0, 2), 16),
-        g = parseInt(hex.slice(2, 4), 16),
-        b = parseInt(hex.slice(4, 6), 16);
-    if (bw) {
-        // http://stackoverflow.com/a/3943023/112731
-        return (r * 0.299 + g * 0.587 + b * 0.114) > 186
-            ? '#000000'
-            : '#FFFFFF';
-    }
-    // invert color components
-    r = (255 - r).toString(16);
-    g = (255 - g).toString(16);
-    b = (255 - b).toString(16);
-    // pad each with zeros and return
-    return "#" + padZero(r) + padZero(g) + padZero(b);
-}
-
 //everytime i extend Element i have the dreading feeling that i am recreating jquery
 // http://perfectionkills.com/whats-wrong-with-extending-the-dom/
 // it seems when IE hasnt died in the hellfire it always deserved this was a problem:
 // although, dont manipulate objects you do not own, hrr
 
-Element.prototype.hasClass = function(className) {
+Element.prototype.tou_hasClass = function(className) {
     return this.classList.contains(className);
 }
 
-Element.prototype.isEmpty = function() {
+Element.prototype.tou_isEmpty = function() {
     return this.innerHTML === "";
   }
 
 //took this as inspiration but made a prototype out of it 
 //https://dev.to/bmsvieira/vanilla-js-fadein-out-2a6o
 //https://codepen.io/jorgemaiden/pen/xoRKWN
-Element.prototype.fadeOut = function(duration = 600, remove = false) {
-    let elementOfSurprise = this;
+
+function tou_fadeOut(elementOfSurprise, duration = 600, remove = false) {    
     elementOfSurprise.style.opacity = 1;
     let last = +new Date();
     let nextTick = function () {
@@ -873,8 +818,7 @@ Element.prototype.fadeOut = function(duration = 600, remove = false) {
     nextTick();
 }
 
-Element.prototype.fadeIn = function(duration = 600, display = "block") {
-    let elementOfSurprise = this;
+function tou_fadeIn(elementOfSurprise, duration = 600, display = "block") {
     elementOfSurprise.style.opacity = 0;
     elementOfSurprise.style.display = display;
     
@@ -895,48 +839,48 @@ Element.prototype.fadeIn = function(duration = 600, display = "block") {
  * @param {number} num  Number of Columns you want to move, negative possible but resulting Column cannot be smaller than 1
  * @return {boolean}    True if the translation has succeded, false if it was impossible 
  */
-Element.prototype.gridTranslateX = function(num) {
-    let currentColStart = parseInt(this.style.gridColumnStart);
-    let currentColEnd   = parseInt(this.style.gridColumnEnd);
+function tou_gridTranslateX(el, num) {
+    let currentColStart = parseInt(el.style.gridColumnStart);
+    let currentColEnd   = parseInt(el.style.gridColumnEnd);
     if( currentColEnd + num < 1 || currentColStart + num < 1 ) {
         return false;
     } 
-    this.style.gridColumnStart = currentColStart + num;
-    this.style.gridColumnEnd = currentColEnd + num;
+    el.style.gridColumnStart = currentColStart + num;
+    el.style.gridColumnEnd = currentColEnd + num;
     return true;
 }
 
 /**i would like to check if the new coordinates clash with any other
 grid element already present but for that i had to check the entire 
 grid which sounds somewhat expensive so i dont do that*/
-Element.prototype.gridTranslateY = function(num) {
-    let currentRowStart = parseInt(this.style.gridRowStart);
-    let currentRowEnd   = parseInt(this.style.gridRowEnd);
+function tou_gridTranslateY(el, num) {
+    let currentRowStart = parseInt(el.style.gridRowStart);
+    let currentRowEnd   = parseInt(el.style.gridRowEnd);
     if( currentRowEnd + num < 1 || currentRowStart + num < 1 ) {
         return false;
     } 
-    this.style.gridRowStart = currentRowStart + num;
-    this.style.gridRowEnd = currentRowEnd + num;
+    el.style.gridRowStart = currentRowStart + num;
+    el.style.gridRowEnd = currentRowEnd + num;
     return true;
 }
 
-Element.prototype.gridTranslateXY = function(x, y) {
-    if( this.gridTranslateX(x) ) {
-        return this.gridTranslateY(y);
+function tou_gridTranslateXY(el, x, y) {
+    if( tou_gridTranslateX(el, x) ) {
+        return tou_gridTranslateY(el, y);
     }
     return false;
 }
 
-Element.prototype.getComputedColumns = function() {
-    let theGrid = window.getComputedStyle(this);
+function tou_getComputedColumns(el) {
+    let theGrid = window.getComputedStyle(el);
     return theGrid.getPropertyValue("grid-template-columns")
         .replace(/ 0px/g, "")
         .split(" ")
         .length;
 }
 
-Element.prototype.getComputedRows = function() {
-    let theGrid = window.getComputedStyle(this);
+function tou_getComputedRows(el) {
+    let theGrid = window.getComputedStyle(el);
     return theGrid.getPropertyValue("grid-template-rows")
         .replace(/ 0px/g, "")
         .split(" ")
