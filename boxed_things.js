@@ -31,7 +31,6 @@ docReady(function() {
         spawnDragBox(box);
     }
     let setBoxes = document.querySelectorAll(`#${KONST_ID_the_grid} > div`);
-    console.log(setBoxes);
     let doOnce = true;
     for( const box of setBoxes ) {
         let dragBox = box.innerHTML;
@@ -42,8 +41,12 @@ docReady(function() {
         let seedBox = document.createElement("div");
         seedBox.className = "outer_box";
         seedBox.innerHTML = dragBox;
-        box.append(seedBox);
+        box.appendChild(seedBox);
         spawnDragBox(seedBox);
+        //resize boxes to grid:
+        discretWidth = parseInt(box.style.gridColumnEnd) - parseInt(box.style.gridColumn);
+        discretHeight = parseInt(box.style.gridRowEnd) - parseInt(box.style.gridRow);
+        setDragBoxDimension(seedBox, discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
     }
 });
 
@@ -72,9 +75,8 @@ function spawnDragBox(el) {
 
 function dragStart(e) {
     e.preventDefault;
-    
     if (e.target.parentElement !== e.currentTarget.parentElement) {
-        if( e.target.parentElement.hasClass('outer_box')) {
+        if( recursiveCheck(e.target, ["outer_box"])) {
             active = true;
             switch( e.target.className ) {
                 case 'corner_lt': activeMode = 1; break;
@@ -91,9 +93,16 @@ function dragStart(e) {
                     activeMode = 0; 
                     break;
             }
-            activeItem = e.target.parentElement;
-            activeGrid = e.target.parentElement.parentElement; //this looks dirty
-            if( activeGrid.parentElement.id !== KONST_ID_the_grid ) { activeGrid = null;}
+            try {
+                activeItem = recursiveSelect(e.target, "outer_box")
+            } catch(e) {
+                activeItem = null;
+                active = false;
+                return false; // breaks function, value of no import
+            }
+            if( activeItem.parentElement.parentElement.id !== KONST_ID_the_grid ) 
+            { activeGrid = null;}
+            else { activeGrid = activeItem.parentElement; }
             //initialize vars
             if( activeItem !== null) {
                 if (!activeItem.xOffeset) {
@@ -200,7 +209,7 @@ function dragEnd(e) {
             if( gridCheckLineCollision(activeItem.parentElement, "bottom", steps-1) ) {
                 activeItem.parentElement.style.gridRowEnd = parseInt(activeItem.parentElement.style.gridRowStart) + steps
                 setDragBoxDimension(activeItem, 0, newHeight);
-                setDimension(activeItem, 0, newHeight);
+                //setDimension(activeItem, 0, newHeight);
             }
             else {
                 setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
@@ -222,10 +231,20 @@ function dragEnd(e) {
     spawnDragBox(newPlaceholder);
     document.querySelector(`#${KONST_ID_repository}`).appendChild(newPlaceholder);
     //clear empty fields in target grid:
+    //&&update internal form fields
     nodeList = document.querySelector(`#${KONST_ID_the_grid}`).querySelectorAll(`.${KONST_CLASS_target_area}`);
     for( const divField of nodeList ) {
         if( divField.isEmpty() && divField.id !== KONST_ID_default_target_area) {
             divField.fadeOut(600, true);
+            continue;
+        }
+        else{ 
+            let boxInput = divField.querySelector(`input`);
+            if( boxInput !== null ) {
+                console.log(boxInput);
+                boxInput.value = divField.style.gridArea;
+            }
+            
         }
     }
     setTimeout(function() {
@@ -318,11 +337,11 @@ function setDimension(el, width = 0, height = 0) {
 }
 
 function setDragBoxDimension(el, width = 0, height = 0) {
-    let magicBorder = 14
+    let magicBorder = 14;
     setDimension(el, width, height);
     contentBox = el.querySelector('.content_box');
-    let innerWidth = width === 0 ? 0 : width - 14;
-    let innerHeight = height === 0 ? 0 : height - 14;
+    let innerWidth = width === 0 ? 0 : width - magicBorder;
+    let innerHeight = height === 0 ? 0 : height - magicBorder;
     setDimension(contentBox, innerWidth, innerHeight);
 }
 
@@ -740,13 +759,11 @@ function gridCoordinates(el, direction) {
  * 
  * @return {boolean}
  */
-function recursiveHit(el, classList, maxIteration = 25) {
+function recursiveCheck(el, classList, maxIteration = 25) {
     recursor = el;
     for( let i = 0; i < maxIteration; i++ ) {
-        let parentClasses = recursor.parentElement.classList;
-        if( recursor.parentElement.tagName === "HTML" ) {
-            return false;
-        }
+        let parentClasses = recursor.classList;
+        if( recursor.tagName === "HTML" ) { return false; }
         for ( const parentClass of parentClasses ) {
             for( const warrantClass of classList ) {
                 if( parentClass === warrantClass ) {
@@ -757,6 +774,30 @@ function recursiveHit(el, classList, maxIteration = 25) {
         recursor = recursor.parentElement;
     }
     return false;
+}
+
+/**
+ * 
+ * @param {element} el 
+ * @param {string} searchClass 
+ * @param {number} maxIteration
+ * 
+ * @return {element}
+ * @throws no hit 
+ */
+function recursiveSelect(el, searchClass, maxIteration = 25 ) {
+    recursor = el;
+    for( let i = 0; i < maxIteration; i++ ) {
+        let elementClasses = recursor.classList;
+        if( recursor.tagName === "HTML" ) { throw 'no hit till root'; }
+        for( const elementClass of elementClasses ) {
+            if( elementClass === searchClass ) {
+                return recursor;
+            }
+        } 
+        recursor = recursor.parentElement;
+    }
+    throw 'no hit but iteration limit'
 }
 
 function padZero(str, len) { len = len || 2; var zeros = new Array(len).join('0'); return (zeros + str).slice(-len); }
