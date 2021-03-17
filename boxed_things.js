@@ -4,17 +4,22 @@ var activeGrid = null;
 var activeMode = null;
 var container = null;
 
-const KONST_CLASS_target_area = "target_field";
-const KONST_CLASS_outer_box = "outer_box";
-const KONST_ID_default_target_area = "target_area_default";
-const KONST_ID_staging_area = "resting_place";
-const KONST_ID_the_grid = "design_grid";
-const KONST_ID_repository = "grid_place";
-const KONST_WIDTH_dragbox = 164;
-const KONST_HEIGHT_dragbox = 34;
+const KONST_CLASS_target_area = "tou_target_field";
+const KONST_CLASS_outer_box = "tou_containment";
+const KONST_CLASS_content_PREFIX = "tou_";
+const KONST_ID_default_target_area = "tou_target_area_default";
+const KONST_ID_staging_area = "tou_assembly";
+const KONST_ID_event_space = "tou_layouter"
+const KONST_ID_the_grid = "tou_bench";
+const KONST_ID_repository = "tou_warehouse";
+const KONST_BORDER_dragbox = 7;
+const KONST_WIDTH_dragbox = 150 + KONST_BORDER_dragbox * 2;
+const KONST_HEIGHT_dragbox = 20 + KONST_BORDER_dragbox * 2;
+const KONST_MARGIN_targetfield = 6;
+const KONST_GAP_targetfield  = 8;
 
 docReady(function() {
-    container = document.querySelector("#staging");
+    container = document.querySelector(`#${KONST_ID_event_space}`);
     container.addEventListener("mousedown", dragStart, false);
     container.addEventListener("mouseup", dragEnd, false);
     container.addEventListener("mousemove", drag, false);
@@ -27,12 +32,19 @@ docReady(function() {
     }
     let setBoxes = document.querySelectorAll(`#${KONST_ID_the_grid} > div`);
     let doOnce = true;
+    if( setBoxes.length === 0 ) {
+        origin = document.createElement("div");
+        origin.className = KONST_CLASS_target_area;
+        origin.style.gridArea = "2 / 2 / 3 / 3";
+        origin.id = KONST_ID_default_target_area;
+        document.querySelector(`#${KONST_ID_the_grid}`).append(origin);
+    }
     for( const box of setBoxes ) {
         let dragBox = box.innerHTML;
         box.innerHTML = "";
-        box.className = "target_field"
+        box.className = KONST_CLASS_target_area
         tou_gridTranslateXY(box, 1,1);
-        if( doOnce ) { box.id = "target_area_default"; doOnce = false; }
+        if( doOnce ) { box.id = KONST_ID_default_target_area; doOnce = false; }
         let seedBox = document.createElement("div");
         seedBox.className = KONST_CLASS_outer_box;
         seedBox.innerHTML = dragBox;
@@ -56,32 +68,34 @@ function docReady(fn) {
 }    
 
 function spawnDragBox(el) {
-    let classes = ['corner_lt', 'border_t', 'corner_rt', 
-    'border_l', 'content_box', 'border_r', 'corner_lb', 'border_b', 'corner_rb'];
+    let classes = [`${KONST_CLASS_content_PREFIX}corner_lt`, `${KONST_CLASS_content_PREFIX}border_t`, `${KONST_CLASS_content_PREFIX}corner_rt`, 
+    `${KONST_CLASS_content_PREFIX}border_l`, `${KONST_CLASS_content_PREFIX}content_box`, 
+    `${KONST_CLASS_content_PREFIX}border_r`, `${KONST_CLASS_content_PREFIX}corner_lb`, 
+    `${KONST_CLASS_content_PREFIX}border_b`, `${KONST_CLASS_content_PREFIX}corner_rb`];
     let contentBox = el.innerHTML;
     el.innerHTML = "";
     classes.forEach( function(item, idx ) {
         let tempDiv = document.createElement('div');
         tempDiv.className = item;
-        if( item === 'content_box' ) { tempDiv.innerHTML = contentBox;}
+        if( item === `${KONST_CLASS_content_PREFIX}content_box` ) { tempDiv.innerHTML = contentBox;}
         el.appendChild(tempDiv)
     });
 }
 
 function dragStart(e) {
     e.preventDefault;
-    if (e.target.parentElement !== e.currentTarget.parentElement) {
+    if (e.target.parentElement !== e.currentTarget.parentElement && e.button === 0) {
         if( recursiveCheck(e.target, [KONST_CLASS_outer_box])) {
             active = true;
             switch( e.target.className ) {
-                case 'corner_lt': activeMode = 1; break;
-                case 'corner_rt': activeMode = 2; break;
-                case 'corner_rb': activeMode = 3; break;
-                case 'corner_lb': activeMode = 4; break;
-                case 'border_t': activeMode = 5; break;
-                case 'border_r': activeMode = 6; break;
-                case 'border_b': activeMode = 7; break;
-                case 'border_l': activeMode = 8; break;
+                case `${KONST_CLASS_content_PREFIX}corner_lt`: activeMode = 1; break;
+                case `${KONST_CLASS_content_PREFIX}corner_rt`: activeMode = 2; break;
+                case `${KONST_CLASS_content_PREFIX}corner_rb`: activeMode = 3; break;
+                case `${KONST_CLASS_content_PREFIX}corner_lb`: activeMode = 4; break;
+                case `${KONST_CLASS_content_PREFIX}border_t`: activeMode = 5; break;
+                case `${KONST_CLASS_content_PREFIX}border_r`: activeMode = 6; break;
+                case `${KONST_CLASS_content_PREFIX}border_b`: activeMode = 7; break;
+                case `${KONST_CLASS_content_PREFIX}border_l`: activeMode = 8; break;
 
                 default: //or content_box
                     e.target.style.cursor ="grabbing";
@@ -115,10 +129,13 @@ function dragStart(e) {
                 else {
                     activeItem.initialX = e.clientX - activeItem.offsetWidth/2
                     activeItem.initialY = e.clientY - activeItem.offsetHeight/2
-                    activeItem.style.position = "fixed";
-                    setTranslate(activeItem.initialX, activeItem.initialY, activeItem);
                 }
-                document.querySelector('#grid_place').append(activeItem);
+                activeItem.style.position = "fixed";
+                setTranslate(activeItem.initialX, activeItem.initialY, activeItem);
+                //reset stuff
+                resetGridTo1x1(activeItem.parentElement);
+                setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
+                document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
             }
             if( activeMode === 6 ) {
                 if( activeItem.parentElement.tou_hasClass(KONST_CLASS_target_area) ) {
@@ -152,6 +169,7 @@ function dragEnd(e) {
                 if( val.className === KONST_CLASS_target_area ) {
                     val.appendChild(activeItem);
                     if(activeGrid !== null && val !== activeGrid ) {
+                        //if target grid is default grid, resets that grid (cause it doesnt get deleted like the others)
                         setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
                         if( activeGrid.id === KONST_ID_default_target_area ) {
                             activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
@@ -163,7 +181,7 @@ function dragEnd(e) {
                 }
             }
             if( snapBack ) {
-                document.querySelector('#grid_place').append(activeItem);
+                document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
                 setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
                 if( activeGrid !== null && activeGrid.id === KONST_ID_default_target_area ) {
                     activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
@@ -327,17 +345,27 @@ function setDimension(el, width = 0, height = 0) {
 }
 
 function setDragBoxDimension(el, width = 0, height = 0) {
-    let magicBorder = 14;
-    setDimension(el, width, height);
-    contentBox = el.querySelector('.content_box');
-    let innerWidth = width === 0 ? 0 : width - magicBorder;
-    let innerHeight = height === 0 ? 0 : height - magicBorder;
-    setDimension(contentBox, innerWidth, innerHeight);
-}
-
-function setNote(text) {
-    let notes = document.querySelector('#notice_area');
-    notes.textContent = text;
+    let w_steps = width === 0 ? 0 :  ( width / KONST_WIDTH_dragbox ) -1; //every additional length beyond the first
+    let h_steps = height === 0 ? 0 : ( height / KONST_HEIGHT_dragbox ) -1;
+    //when a grid element is longer than one row/column we need to factor in the gap
+    //which consists of 2 times half the margin and one time the actual gap per multiple of dimension
+    let gapWidth = KONST_GAP_targetfield*w_steps + KONST_MARGIN_targetfield * w_steps;
+    let gapHeight = KONST_GAP_targetfield*h_steps + KONST_MARGIN_targetfield * h_steps
+    setDimension(el, width + gapWidth, gapHeight); // the overall box you drag around
+    contentBox = el.querySelector(`.${KONST_CLASS_content_PREFIX}content_box`);
+    let innerWidth = width === 0 ? 0 : width - KONST_BORDER_dragbox * 2 + gapWidth;
+    let innerHeight = height === 0 ? 0 : height - KONST_BORDER_dragbox * 2 + gapHeight;
+    setDimension(contentBox, innerWidth, innerHeight); // text box dimension minus border
+    //the outer container (with the dashed border)
+    /*
+    //apparently resizes itself just fine with normal css without me doing things
+    let grid = recursiveSelect(el, KONST_CLASS_target_area);
+    if( w_steps > 0) {
+        grid.style.width = width + KONST_MARGIN_targetfield + (w_steps * KONST_MARGIN_targetfield) + (w_steps * KONST_GAP_targetfield);
+    }
+    if( h_steps > 0 ) {
+        grid.style.height = height + KONST_MARGIN_targetfield + (h_steps * KONST_MARGIN_targetfield) + (h_steps * KONST_GAP_targetfield)
+    }*/
 }
 
 function MakeElementAbsolute(el) {
@@ -375,7 +403,7 @@ function handleGridLayouter(e) {
         Mpoint = {x: e.clientX + window.pageXOffset, y: e.clientY + window.pageYOffset};
         for( const node of nodeList) {
             if( node.tou_isEmpty() ) { continue; }
-            node.style.outline = "1px dashed #FF06B5";
+            //node.style.outline = "1px dashed #FF06B5";
             let coords = getCoords(node);
             let tempDist = getBoxDistance2Point(
                 Mpoint.x, Mpoint.y,
@@ -388,12 +416,11 @@ function handleGridLayouter(e) {
             }
         }
         if( closestElement ) {
-            closestElement.style.outline = "1px dotted green";
+            //closestElement.style.outline = "1px dotted green";
             let newGridCoordinates = gridCoordinates(closestElement, angle)
             let gridTest = gridCollisionCheck( document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
             if( gridTest === 0 ) {
                 insertGridField(document.querySelector(`#${KONST_ID_the_grid}`), newGridCoordinates);
-                setNote(`New Node: ${newGridCoordinates}, Element: "${closestElement.id}[${closestElement.className}]"`);
             }
             else if( Math.abs(gridTest) === 2) { //grid is already in place BUT not empty so we move everything
                 ShiftGrid(closestElement, angle)
@@ -406,12 +433,12 @@ function handleGridLayouter(e) {
 
 function insertGridField(target, coordinates) {
     if( coordinates.trim() === "" ) { return false;}
-    let nodes = target.querySelectorAll('.target_field');
+    let nodes = target.querySelectorAll(`.${KONST_CLASS_target_area}`);
     for( const div of nodes) {
         if( div.style.gridArea === coordinates ) { return false;}
     }
     let brandNew = document.createElement('div')
-    brandNew.className = "target_field";
+    brandNew.className = KONST_CLASS_target_area;
     brandNew.style.gridArea = coordinates;
     target.appendChild(brandNew);
     tou_fadeIn(brandNew, 600, "grid-item");
@@ -885,4 +912,24 @@ function tou_getComputedRows(el) {
         .replace(/ 0px/g, "")
         .split(" ")
         .length;
+}
+
+function resetGridTo1x1(el) {
+    el.style.gridRowEnd = parseInt(el.style.gridRow) + 1;
+    el.style.gridColumnEnd = parseInt(el.style.gridColumn) + 1;
+}
+
+//super narrow function that only works for me in this particular case:
+// div:c=target_area >> div:c=outer_box >> (div:c=content_box) >> input
+function SnapTo1_1(grid) {
+    gridElement = grid.querySelectorAll(`.${KONST_CLASS_target_area}`);
+    for( const el of gridElement) {
+        tou_gridTranslateXY(el, -1, -1);
+        let outer_box = el.querySelector(`.${KONST_CLASS_outer_box}`);
+        let boxInput = outer_box.querySelector(`input`);
+        if( boxInput !== null ) {
+            boxInput.value = outer_box.style.gridArea;
+        }
+    }
+    
 }
