@@ -1,3 +1,5 @@
+const KONST_TOU_VERSION = "0.7.8";
+
 var active = false;
 var activeItem = null;
 var activeGrid = null;
@@ -12,6 +14,7 @@ const KONST_ID_staging_area = "tou_assembly";
 const KONST_ID_event_space = "tou_layouter"
 const KONST_ID_the_grid = "tou_bench";
 const KONST_ID_repository = "tou_warehouse";
+const KONST_ID_form = "tou_form";
 const KONST_BORDER_dragbox = 7;
 const KONST_WIDTH_dragbox = 150 + KONST_BORDER_dragbox * 2;
 const KONST_HEIGHT_dragbox = 20 + KONST_BORDER_dragbox * 2;
@@ -19,6 +22,7 @@ const KONST_MARGIN_targetfield = 6;
 const KONST_GAP_targetfield  = 8;
 
 docReady(function() {
+    spawnVersionInfo();
     container = document.querySelector(`#${KONST_ID_event_space}`);
     container.addEventListener("mousedown", dragStart, false);
     container.addEventListener("mouseup", dragEnd, false);
@@ -26,6 +30,11 @@ docReady(function() {
     container.addEventListener("touchstart", dragStart, false);
     container.addEventListener("touchend", dragEnd, false);
     container.addEventListener("touchmove", drag, false);
+    document.querySelector(`#${KONST_ID_form}`).addEventListener('submit', function(event) {
+        SnapTo1_1(document.querySelector(`#${KONST_ID_the_grid}`))
+        //this will also trigger a mousedown & mouseup event
+        event.preventDefault();
+    }, false);
     let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .${KONST_CLASS_outer_box}`)
     for( const box of dragBoxes) {
         spawnDragBox(box);
@@ -155,81 +164,82 @@ function dragStart(e) {
 }
 
 function dragEnd(e) {
-    var step_height = 30;
     let snapBack = true;
-    if (activeItem !== null) {
-        activeItem.initialX = activeItem.currentX;
-        activeItem.initialY = activeItem.currentY;
+    if (activeItem === null) { return null; } //abort if nothing is to be done
 
-        //resetCursor
-        if( activeMode === 0 ) {
-            e.target.style.cursor = "grab";
-            hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
-            for( const val of hoverElements ) {
-                if( val.className === KONST_CLASS_target_area ) {
-                    val.appendChild(activeItem);
-                    if(activeGrid !== null && val !== activeGrid ) {
-                        //if target grid is default grid, resets that grid (cause it doesnt get deleted like the others)
-                        setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
-                        if( activeGrid.id === KONST_ID_default_target_area ) {
-                            activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
-                            activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
-                        }
+    activeItem.initialX = activeItem.currentX;
+    activeItem.initialY = activeItem.currentY;
+
+    //resetCursor
+    if( activeMode === 0 ) {
+        e.target.style.cursor = "grab";
+        hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
+        for( const val of hoverElements ) {
+            if( val.className === KONST_CLASS_target_area ) {
+                val.appendChild(activeItem);
+                if(activeGrid !== null && val !== activeGrid ) {
+                    //if target grid is default grid, resets that grid (cause it doesnt get deleted like the others)
+                    setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
+                    if( activeGrid.id === KONST_ID_default_target_area ) {
+                        activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
+                        activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
                     }
-                    snapBack = false;
-                    break;
                 }
+                snapBack = false;
+                break;
             }
-            if( snapBack ) {
-                document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
-                setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
-                if( activeGrid !== null && activeGrid.id === KONST_ID_default_target_area ) {
-                    activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
-                    activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
-                }
-            }
-            activeItem.style = null;
         }
+        if( snapBack ) {
+            document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
+            setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
+            let boxInput = activeItem.querySelector(`input`);
+            if( boxInput !== null ) {
+                boxInput.value = "";
+            }
+            if( activeGrid !== null && activeGrid.id === KONST_ID_default_target_area ) {
+                activeGrid.style.gridColumnEnd = parseInt(activeGrid.style.gridColumnStart) + 1
+                activeGrid.style.gridRowEnd = parseInt(activeGrid.style.gridRowStart) + 1
+            }
+        }
+        activeItem.style = null;
+    }
 
-        if( activeMode === 1) {
-            tou_fadeOut(activeItem, 1200)
-            setTimeout(tou_fadeIn(activeItem, 1200, "grid"), 2500);
+    if( activeMode === 1) {
+        tou_fadeOut(activeItem, 1200)
+        setTimeout(tou_fadeIn(activeItem, 1200, "grid"), 2500);
+    }
+    
+    if( activeMode === 6) { //snap to width
+        let steps = Math.round(activeItem.offsetWidth / KONST_WIDTH_dragbox);
+        let newWidth = steps*KONST_WIDTH_dragbox
+        if( newWidth <= 0 ) { newWidth = KONST_WIDTH_dragbox; }
+        activeItem.style.position = "";
+        activeItem.style.left = "";
+        activeItem.style.top = "";
+        if( gridCheckLineCollision(activeItem.parentElement, "right", steps-1) ) {
+            activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
+            setDragBoxDimension(activeItem, newWidth);
         }
-        
-        if( activeMode === 6) { //snap to width
-            let steps = Math.round(activeItem.offsetWidth / KONST_WIDTH_dragbox);
-            let newWidth = steps*KONST_WIDTH_dragbox
-            if( newWidth <= 0 ) { newWidth = KONST_WIDTH_dragbox; }
-            activeItem.style.position = "";
-            activeItem.style.left = "";
-            activeItem.style.top = "";
-            if( gridCheckLineCollision(activeItem.parentElement, "right", steps-1) ) {
-                activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
-                setDragBoxDimension(activeItem, newWidth);
-                setDimension(activeItem, newWidth, 0);
-            }
-            else {
-                setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
-            }
+        else {
+            setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
         }
-        if( activeMode === 7) { //snap to height
-            let steps = Math.round(activeItem.offsetHeight / KONST_HEIGHT_dragbox);
-            let newHeight = steps*KONST_HEIGHT_dragbox
-            if( newHeight <= 0 ) { newHeight = KONST_HEIGHT_dragbox; }
-            activeItem.style.position = "";
-            activeItem.style.left = "";
-            activeItem.style.top = "";
-            if( gridCheckLineCollision(activeItem.parentElement, "bottom", steps-1) ) {
-                activeItem.parentElement.style.gridRowEnd = parseInt(activeItem.parentElement.style.gridRowStart) + steps
-                setDragBoxDimension(activeItem, 0, newHeight);
-                //setDimension(activeItem, 0, newHeight);
-            }
-            else {
-                setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
-            }
+    }
+    if( activeMode === 7) { //snap to height
+        let steps = Math.round(activeItem.offsetHeight / KONST_HEIGHT_dragbox);
+        let newHeight = steps*KONST_HEIGHT_dragbox
+        if( newHeight <= 0 ) { newHeight = KONST_HEIGHT_dragbox; }
+        activeItem.style.position = "";
+        activeItem.style.left = "";
+        activeItem.style.top = "";
+        if( gridCheckLineCollision(activeItem.parentElement, "bottom", steps-1) ) {
+            activeItem.parentElement.style.gridRowEnd = parseInt(activeItem.parentElement.style.gridRowStart) + steps
+            setDragBoxDimension(activeItem, 0, newHeight);
+            //setDimension(activeItem, 0, newHeight);
         }
-
-      }
+        else {
+            setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
+        }
+    }
 
     //clear out placeholders
     nodeList = document.querySelectorAll(`#${KONST_ID_repository} .${KONST_CLASS_outer_box}`);
@@ -282,7 +292,7 @@ function dragEnd(e) {
         }
         cleanUpGrid(document.querySelector(`#${KONST_ID_the_grid}`));
     }, 800); //anonymous function from above
-    
+
     active = false;
     activeItem = null;
     activeGrid = null;
@@ -293,6 +303,7 @@ function drag(e) {
     if( active ) {
 
         e.preventDefault();
+        console.log(e.clientX, e.clientY);
                 
         if( activeMode === 0 ) {
             if (e.type === "touchmove") {
@@ -349,9 +360,9 @@ function setDragBoxDimension(el, width = 0, height = 0) {
     let h_steps = height === 0 ? 0 : ( height / KONST_HEIGHT_dragbox ) -1;
     //when a grid element is longer than one row/column we need to factor in the gap
     //which consists of 2 times half the margin and one time the actual gap per multiple of dimension
-    let gapWidth = KONST_GAP_targetfield*w_steps + KONST_MARGIN_targetfield * w_steps;
+    let gapWidth = KONST_GAP_targetfield*w_steps + KONST_MARGIN_targetfield * w_steps
     let gapHeight = KONST_GAP_targetfield*h_steps + KONST_MARGIN_targetfield * h_steps
-    setDimension(el, width + gapWidth, gapHeight); // the overall box you drag around
+    setDimension(el, width + gapWidth, height + gapHeight); // the overall box you drag around
     contentBox = el.querySelector(`.${KONST_CLASS_content_PREFIX}content_box`);
     let innerWidth = width === 0 ? 0 : width - KONST_BORDER_dragbox * 2 + gapWidth;
     let innerHeight = height === 0 ? 0 : height - KONST_BORDER_dragbox * 2 + gapHeight;
@@ -928,8 +939,17 @@ function SnapTo1_1(grid) {
         let outer_box = el.querySelector(`.${KONST_CLASS_outer_box}`);
         let boxInput = outer_box.querySelector(`input`);
         if( boxInput !== null ) {
-            boxInput.value = outer_box.style.gridArea;
+            boxInput.value = el.style.gridArea;
         }
     }
     
+}
+
+function spawnVersionInfo() {
+    if( typeof KONST_TOU_VERSION !== 'undefined' ) {
+        version_info = document.createElement("DIV");
+        version_info.style = "position: fixed; top: 10px; left: 10px; outline: 1px solid #fa8005; width: 110px; height: 25px; background: black; opacity: 0.25; color: #fa8005; font-family: fixed; font-weight: 1200; font-size: 16px; vertical-align: middle; align-content: center; padding: 4px;";
+        version_info.innerText = "Version: " + KONST_TOU_VERSION;
+        document.querySelector("HTML").append(version_info);
+    }
 }
