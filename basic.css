@@ -5,6 +5,7 @@
    --grey2: #999999;
    --grey3: #808080;
    --grey4: #404040;
+   --lightblue: #0066ff;
    --lightgreen: #AAFFAA;
    --highlight: #CC0000;
    --link: #4444BB;
@@ -14,6 +15,7 @@
    --tou_content_border: 7px;
    --tou_targetfield_margin: 6px;
    --tou_targetfield_gap: 8px;
+   --lighten-percentage: 20%;
  }
 
  body {
@@ -212,4 +214,33 @@ div.tou_spaceblock {
     grid-column-end: 2;
     grid-row-start: 3;
     grid-row-end: 3;
+}
+
+.tou_content_parallel_middle {
+   width: 10px;
+   background: greenyellow;
+}
+
+.tou_content_parellel_container {
+   display: flex;
+}
+
+.tou_content_parallel_right {
+   width: 5px;
+   background: var(--lightblue);
+}
+
+.tou_content_parallel_left {
+   width: 5px;
+   background: var(--lightgreen);
+}
+
+.tou_content_left { background: var(--lightgreen);}
+.tou_content_left:hover { background: calc( var(--lightgreen) + var(--lighten-percentage)) }
+
+.tou_content_right { background: var(--lightblue);}
+.tou_content_right:hover { background: calc( var(--lightblue) + var(--lighten-percentage)) }
+
+.tou_content_hidden {
+   display: none;
 }

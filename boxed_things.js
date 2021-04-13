@@ -1,4 +1,4 @@
-const KONST_TOU_VERSION = "0.7.8";
+const KONST_TOU_VERSION = "0.7.9";
 
 var active = false;
 var activeItem = null;
@@ -20,6 +20,7 @@ const KONST_WIDTH_dragbox = 150 + KONST_BORDER_dragbox * 2;
 const KONST_HEIGHT_dragbox = 20 + KONST_BORDER_dragbox * 2;
 const KONST_MARGIN_targetfield = 6;
 const KONST_GAP_targetfield  = 8;
+const KONST_W_STEP_MAP = new WeakMap();
 
 docReady(function() {
     spawnVersionInfo();
@@ -62,6 +63,7 @@ docReady(function() {
         //resize boxes to grid:
         discretWidth = parseInt(box.style.gridColumnEnd) - parseInt(box.style.gridColumn);
         discretHeight = parseInt(box.style.gridRowEnd) - parseInt(box.style.gridRow);
+        KONST_W_STEP_MAP.set(seedBox, discretWidth);
         setDragBoxDimension(seedBox, discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
     }
 });
@@ -174,10 +176,12 @@ function dragEnd(e) {
     if( activeMode === 0 ) {
         e.target.style.cursor = "grab";
         hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
+        let dropGrid = null;
         for( const val of hoverElements ) {
             if( val.className === KONST_CLASS_target_area ) {
-                val.appendChild(activeItem);
-                if(activeGrid !== null && val !== activeGrid ) {
+                dropGrid = val;
+                dropGrid.appendChild(activeItem);
+                if(activeGrid !== null && dropGrid !== activeGrid ) {
                     //if target grid is default grid, resets that grid (cause it doesnt get deleted like the others)
                     setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
                     if( activeGrid.id === KONST_ID_default_target_area ) {
@@ -186,9 +190,14 @@ function dragEnd(e) {
                     }
                 }
                 snapBack = false;
-                break;
             }
         }
+
+        //check if there was some kind of drop event
+        if( dropGrid ) {
+            HandleContainerBox(dropGrid);
+        }
+
         if( snapBack ) {
             document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
             setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
@@ -213,6 +222,7 @@ function dragEnd(e) {
         let steps = Math.round(activeItem.offsetWidth / KONST_WIDTH_dragbox);
         let newWidth = steps*KONST_WIDTH_dragbox
         if( newWidth <= 0 ) { newWidth = KONST_WIDTH_dragbox; }
+        KONST_W_STEP_MAP.set(activeItem, steps);
         activeItem.style.position = "";
         activeItem.style.left = "";
         activeItem.style.top = "";
@@ -303,7 +313,7 @@ function drag(e) {
     if( active ) {
 
         e.preventDefault();
-        console.log(e.clientX, e.clientY);
+        //console.log(e.clientX, e.clientY);
                 
         if( activeMode === 0 ) {
             if (e.type === "touchmove") {
@@ -353,6 +363,127 @@ function setTranslate(xPos, yPos, el) {
 function setDimension(el, width = 0, height = 0) {
     if( width !== 0 ) { el.style.width = width; }
     if( height !== 0 ) { el.style.height = height; }
+}
+
+function HandleContainerBox(el) {
+    //target: grid field around the dragContainer
+    //if only 1 is around, revert to normal design if necessary or do nothing
+
+    // only one subElement, check if its a subcontainer with only one element inside 
+    let contentItemList = [];
+    let first_child = null;
+
+    if( el.childNodes.length === 1 ) {
+        first_child = el.childNodes[0];
+        let dragbox = first_child.querySelector('.tou_content_box');
+        console.log("DRAGBOX LENGHT ", dragbox.childNodes.length);
+        if( dragbox.childNodes.length > 1 ) {
+            contentItemList.push(dragbox.innerHTML);
+        }
+        else { 
+            for( const dragSubContainer of dragBox.firstChild ) {
+                if( dragSubContainer.className = "tou_content_parallel_content") {
+                    contentItemList.push(dragSubContainer.innerHTML);
+                }
+            }
+        }
+        
+    } 
+    //another strangler inside the structure
+    if( el.childNodes.length > 1 ) {
+        for( const boxy of el.childNodes ) {
+            let dragBox = null;
+            if( boxy.className === "tou_containment" ) {
+                dragBox = boxy.querySelector('.tou_content_box');
+                console.log("DRAGBOX ",dragBox);
+                if( dragBox.childNodes.length > 1 ) { 
+                    contentItemList.push(dragBox.innerHTML); 
+                }
+                else { 
+                    for( const dragSubContainer of dragBox.firstChild ) { //TODO: something fails here
+                        if( dragSubContainer.className = "tou_content_parallel_content") {
+                            contentItemList.push(dragSubContainer.innerHTML);
+                        }
+                    }
+                }
+                if( !first_child ) { first_child = boxy; }
+                else { boxy.remove(); }
+            }
+        }
+    }
+
+    console.log(contentItemList);
+    if( contentItemList.length === 1 ) { //there is a subcontainer style but only one content element to it
+        dragBox.innerHTML = contentItemList[0]; //reset content to normal drag box     
+    }
+    else { //if its < 1 there is a problem afoot
+        //rebuild interface to make sure it properly fits
+        let content_box = first_child.querySelector('.tou_content_box');
+        content_box.innerHTML = "";
+        let outer_shell = document.createElement('div');
+        outer_shell.className = "tou_content_parellel_container";
+        content_box.appendChild(outer_shell);
+        let steps = 1;
+        if( KONST_W_STEP_MAP.has(first_child) ) { steps = KONST_W_STEP_MAP.get(first_child); }
+        let n_elements = contentItemList.length;
+        let width_per_element = 
+        ( (KONST_WIDTH_dragbox*steps + KONST_GAP_targetfield*(steps-1) + 2*KONST_BORDER_dragbox*(steps) + 2*KONST_MARGIN_targetfield*(steps-1) ) 
+        - (20 + ( (n_elements-1)*10)) ) / n_elements;
+        contentItemList.forEach(function(item, index) {
+            console.log(index, " ", contentItemList.length);
+            let letClearDiv = document.createElement('DIV');
+            letClearDiv.className = "tou_content_parallel_content";
+            letClearDiv.innerHTML = item;
+            letClearDiv.style.width = width_per_element;
+            if( index === 0 ) {
+                let parallel_left = document.createElement('DIV');
+                parallel_left.className = "tou_content_parallel_left";
+                outer_shell.appendChild(parallel_left);
+            }
+            
+            outer_shell.appendChild(letClearDiv);
+            if( index+1 >= contentItemList.length ) { //last element 
+                let parallel_right = document.createElement('DIV');
+                parallel_right.className = "tou_content_parallel_right";
+                outer_shell.appendChild(parallel_right);
+            }
+            else {
+                let parallel_middle = document.createElement('DIV');
+                parallel_middle.className = "tou_content_parallel_middle";
+                outer_shell.appendChild(parallel_middle)
+            }
+            //length maxLength/n
+        });
+     }
+}
+
+function transform2TargetBox(el) {
+    //containment
+    let hidden_el = document.createElement('DIV');
+    hidden_el.className = "tou_content_hidden";
+    hidden_el.innerHTML = el.innerHTML;
+    el.innerHTML = "";
+    el.style.display = "flex";
+    let left = document.createElement('div');
+    left.className = "tou_content_left";
+    left.style.width = "50%";
+    let right = document.createElement('div');
+    right.className = "tou_content_right";
+    right.style.width = "50%";
+    el.appendChild(left);
+    el.appendChild(right);
+    el.appendChild(hidden_el);
+}
+
+function revertTargetBox(el) {
+    let children = el.childNodes;
+    for( const child of children ) {
+        if( child.className === "tou_content_hidden" ) {
+            el.style.display = "";
+            el.innerHTML = child.innerHTML;
+            break;
+        }
+    }
 }
 
 function setDragBoxDimension(el, width = 0, height = 0) {
