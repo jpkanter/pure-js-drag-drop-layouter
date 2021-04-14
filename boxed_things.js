@@ -1,10 +1,11 @@
-const KONST_TOU_VERSION = "0.7.9";
+const KONST_TOU_VERSION = "0.8.0";
 
 var active = false;
 var activeItem = null;
 var activeGrid = null;
 var activeMode = null;
 var container = null;
+var transformedContainer = null;
 
 const KONST_CLASS_target_area = "tou_target_field";
 const KONST_CLASS_outer_box = "tou_containment";
@@ -20,6 +21,8 @@ const KONST_WIDTH_dragbox = 150 + KONST_BORDER_dragbox * 2;
 const KONST_HEIGHT_dragbox = 20 + KONST_BORDER_dragbox * 2;
 const KONST_MARGIN_targetfield = 6;
 const KONST_GAP_targetfield  = 8;
+const KONST_PARALLEL_MID = 10;
+const KONST_PARALLEL_SIDE = 5;
 const KONST_W_STEP_MAP = new WeakMap();
 
 docReady(function() {
@@ -168,6 +171,10 @@ function dragStart(e) {
 function dragEnd(e) {
     let snapBack = true;
     if (activeItem === null) { return null; } //abort if nothing is to be done
+
+    if( transformedContainer !== null ) {
+        revertTargetBox(transformedContainer)
+    } 
 
     activeItem.initialX = activeItem.currentX;
     activeItem.initialY = activeItem.currentY;
@@ -334,6 +341,38 @@ function drag(e) {
             //setTranslate(activeItem.currentX, activeItem.currentY, activeItem);
             setTranslate(MiddleX, MiddleY, activeItem);
             handleGridLayouter(e);
+
+            //change appereance of "hovered" object
+
+            hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
+            let landingPlace = null;
+            for( const val of hoverElements ) {
+                if( val.className === KONST_CLASS_outer_box && val.parentElement.className === KONST_CLASS_target_area ) { 
+                    landingPlace = val; 
+                } //should be in order, last one is furthest down
+            }
+            //outside of any one grid, transform back
+            if( landingPlace != null && transformedContainer != null ) {
+                revertTargetBox(transformedContainer);
+            }
+            //check if landingPlace is actually a one entry container 
+            if( landingPlace != null ) {
+                for( const val of landingPlace.querySelector(".tou_content_box").childNodes ) {
+                    if( val.className === "tou_content_parellel_container") {
+                        landingPlace = null;
+                        break;
+                    }
+                }
+            }
+
+            if( landingPlace != null ) {
+                if( landingPlace != transformedContainer || transformedContainer != null ) {
+                    if( transformedContainer ) { revertTargetBox(transformedContainer); }
+                    transformedContainer = landingPlace;
+                    transform2TargetBox(transformedContainer);
+                }
+            }
+
         }
 
         if( activeMode === 6 ) {
@@ -376,13 +415,12 @@ function HandleContainerBox(el) {
     if( el.childNodes.length === 1 ) {
         first_child = el.childNodes[0];
         let dragbox = first_child.querySelector('.tou_content_box');
-        console.log("DRAGBOX LENGHT ", dragbox.childNodes.length);
         if( dragbox.childNodes.length > 1 ) {
             contentItemList.push(dragbox.innerHTML);
         }
         else { 
-            for( const dragSubContainer of dragBox.firstChild ) {
-                if( dragSubContainer.className = "tou_content_parallel_content") {
+            for( const dragSubContainer of dragBox.firstChild.childNodes ) {
+                if( dragSubContainer.className === "tou_content_parallel_content") {
                     contentItemList.push(dragSubContainer.innerHTML);
                 }
             }
@@ -395,14 +433,13 @@ function HandleContainerBox(el) {
             let dragBox = null;
             if( boxy.className === "tou_containment" ) {
                 dragBox = boxy.querySelector('.tou_content_box');
-                console.log("DRAGBOX ",dragBox);
                 if( dragBox.childNodes.length > 1 ) { 
                     contentItemList.push(dragBox.innerHTML); 
                 }
                 else { 
-                    for( const dragSubContainer of dragBox.firstChild ) { //TODO: something fails here
-                        if( dragSubContainer.className = "tou_content_parallel_content") {
-                            contentItemList.push(dragSubContainer.innerHTML);
+                    for( const dragSubContainer2 of dragBox.firstChild.childNodes ) { //TODO: something fails here
+                        if( dragSubContainer2.className === "tou_content_parallel_content") {
+                            contentItemList.push(dragSubContainer2.innerHTML);
                         }
                     }
                 }
@@ -412,9 +449,8 @@ function HandleContainerBox(el) {
         }
     }
 
-    console.log(contentItemList);
     if( contentItemList.length === 1 ) { //there is a subcontainer style but only one content element to it
-        dragBox.innerHTML = contentItemList[0]; //reset content to normal drag box     
+        first_child.querySelector('.tou_content_box').innerHTML = contentItemList[0]; //reset content to normal drag box     
     }
     else { //if its < 1 there is a problem afoot
         //rebuild interface to make sure it properly fits
@@ -426,9 +462,12 @@ function HandleContainerBox(el) {
         let steps = 1;
         if( KONST_W_STEP_MAP.has(first_child) ) { steps = KONST_W_STEP_MAP.get(first_child); }
         let n_elements = contentItemList.length;
+        let avaible_width = KONST_WIDTH_dragbox*steps 
+                          + KONST_MARGIN_targetfield*(steps-1) 
+                          + KONST_GAP_targetfield*(steps-1) 
+                          - 2*KONST_BORDER_dragbox
         let width_per_element = 
-        ( (KONST_WIDTH_dragbox*steps + KONST_GAP_targetfield*(steps-1) + 2*KONST_BORDER_dragbox*(steps) + 2*KONST_MARGIN_targetfield*(steps-1) ) 
-        - (20 + ( (n_elements-1)*10)) ) / n_elements;
+        ( avaible_width - (2+KONST_PARALLEL_SIDE + (n_elements-1)*KONST_PARALLEL_MID) ) / n_elements;
         contentItemList.forEach(function(item, index) {
             console.log(index, " ", contentItemList.length);
             let letClearDiv = document.createElement('DIV');
@@ -463,20 +502,22 @@ function transform2TargetBox(el) {
     hidden_el.className = "tou_content_hidden";
     hidden_el.innerHTML = el.innerHTML;
     el.innerHTML = "";
-    el.style.display = "flex";
-    let left = document.createElement('div');
+    let wrapper = document.createElement('DIV');
+    wrapper.style.display = "flex";
+    let left = document.createElement('DIV');
     left.className = "tou_content_left";
     left.style.width = "50%";
-    let right = document.createElement('div');
+    let right = document.createElement('DIV');
     right.className = "tou_content_right";
     right.style.width = "50%";
-    el.appendChild(left);
-    el.appendChild(right);
-    el.appendChild(hidden_el);
+    wrapper.appendChild(left);
+    wrapper.appendChild(right);
+    wrapper.appendChild(hidden_el);
+    el.appendChild(wrapper);
 }
 
 function revertTargetBox(el) {
-    let children = el.childNodes;
+    let children = el.firstChild.childNodes;
     for( const child of children ) {
         if( child.className === "tou_content_hidden" ) {
             el.style.display = "";
