@@ -110,21 +110,41 @@ function dragStart(e) {
                 case `${KONST_CLASS_content_PREFIX}border_r`: activeMode = 6; break;
                 case `${KONST_CLASS_content_PREFIX}border_b`: activeMode = 7; break;
                 case `${KONST_CLASS_content_PREFIX}border_l`: activeMode = 8; break;
-
+                case `${KONST_CLASS_content_PREFIX}content_parallel_content`: activeMode = 10; break;
                 default: //or content_box
                     e.target.style.cursor ="grabbing";
                     activeMode = 0; 
                     break;
             }
             try {
-                activeItem = recursiveSelect(e.target, KONST_CLASS_outer_box)
+                /*we are basically injecting ourselfs in the normal drag functionality, it looks a bit like 
+                an afterthought but i actually could have rebuild the whole thing but this appeard to me the 
+                most simple thing, leaving the other drag functionality as it and just extending it here and 
+                then "faking" the mode back to 1 aka. the normal drag just with a swapped target */
+                if( activeMode === 10 ) {
+                  //  create newDragbox out of the content box, change the parentBox and proceed as normal
+                    let newBox = document.createElement('div');
+                    newBox.className = KONST_CLASS_outer_box;
+                    newBox.innerHTML = e.target.innerHTML;
+                    spawnDragBox(newBox);
+                    //i hate this, really, but its the easiest way and the structure is well defined
+                    // content_parallel_content > parallel_container > content_box > containment > target_field
+                    let currentGrid = e.target.parentElement.parentElement.parentElement.parentElement;
+                    e.target.remove();
+                    HandleContainerBox(currentGrid);
+                    activeItem = newBox;
+                    currentGrid.appendChild(newBox); 
+                }
+                else {
+                    activeItem = recursiveSelect(e.target, KONST_CLASS_outer_box)
+                }
             } catch(e) {
                 activeItem = null;
                 active = false;
                 return false; // breaks function, value of no import
             }
             if( activeItem.parentElement.parentElement.id !== KONST_ID_the_grid ) 
-            { activeGrid = null;}
+                { activeGrid = null;}
             else { activeGrid = activeItem.parentElement; }
             //initialize vars
             if( activeItem !== null) {
@@ -135,7 +155,8 @@ function dragStart(e) {
                     activeItem.yOffset = 0;
                 }
             }
-            if( activeMode === 0 ) {
+
+            if( activeMode === 0 || activeMode === 10 ) {
                 if (e.type === "touchstart") {
                     activeItem.initialX = e.touches[0].clientX - activeItem.xOffset;
                     activeItem.initialY = e.touches[0].clientY - activeItem.yOffset;
@@ -147,7 +168,7 @@ function dragStart(e) {
                 activeItem.style.position = "fixed";
                 setTranslate(activeItem.initialX, activeItem.initialY, activeItem);
                 //reset stuff
-                resetGridTo1x1(activeItem.parentElement);
+                if( activeMode === 0 ) resetGridTo1x1(activeItem.parentElement);
                 setDragBoxDimension(activeItem, KONST_WIDTH_dragbox, KONST_HEIGHT_dragbox);
                 document.querySelector(`#${KONST_ID_repository}`).append(activeItem);
             }
@@ -180,8 +201,8 @@ function dragEnd(e) {
     activeItem.initialY = activeItem.currentY;
 
     //resetCursor
-    if( activeMode === 0 ) {
-        e.target.style.cursor = "grab";
+    if( activeMode === 0 || activeMode === 10 ) {
+        e.target.style.cursor = null;
         hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
         let dropGrid = null;
         for( const val of hoverElements ) {
@@ -219,11 +240,6 @@ function dragEnd(e) {
         }
         activeItem.style = null;
     }
-
-    if( activeMode === 1) {
-        tou_fadeOut(activeItem, 1200)
-        setTimeout(tou_fadeIn(activeItem, 1200, "grid"), 2500);
-    }
     
     if( activeMode === 6) { //snap to width
         let steps = Math.round(activeItem.offsetWidth / KONST_WIDTH_dragbox);
@@ -236,6 +252,7 @@ function dragEnd(e) {
         if( gridCheckLineCollision(activeItem.parentElement, "right", steps-1) ) {
             activeItem.parentElement.style.gridColumnEnd = parseInt(activeItem.parentElement.style.gridColumnStart) + steps
             setDragBoxDimension(activeItem, newWidth);
+            HandleContainerBox(activeItem.parentElement);
         }
         else {
             setDimension(activeItem, activeItem.addInfo.width, activeItem.addInfo.height);
@@ -251,6 +268,7 @@ function dragEnd(e) {
         if( gridCheckLineCollision(activeItem.parentElement, "bottom", steps-1) ) {
             activeItem.parentElement.style.gridRowEnd = parseInt(activeItem.parentElement.style.gridRowStart) + steps
             setDragBoxDimension(activeItem, 0, newHeight);
+            HandleContainerBox(activeItem.parentElement);
             //setDimension(activeItem, 0, newHeight);
         }
         else {
@@ -322,7 +340,7 @@ function drag(e) {
         e.preventDefault();
         //console.log(e.clientX, e.clientY);
                 
-        if( activeMode === 0 ) {
+        if( activeMode === 0 || activeMode === 10 ) {
             if (e.type === "touchmove") {
                 activeItem.currentX = e.touches[0].clientX - activeItem.initialX;
                 activeItem.currentY = e.touches[0].clientY - activeItem.initialY;
@@ -419,7 +437,7 @@ function HandleContainerBox(el) {
             contentItemList.push(dragbox.innerHTML);
         }
         else { 
-            for( const dragSubContainer of dragBox.firstChild.childNodes ) {
+            for( const dragSubContainer of dragbox.firstChild.childNodes ) {
                 if( dragSubContainer.className === "tou_content_parallel_content") {
                     contentItemList.push(dragSubContainer.innerHTML);
                 }
@@ -453,8 +471,20 @@ function HandleContainerBox(el) {
         first_child.querySelector('.tou_content_box').innerHTML = contentItemList[0]; //reset content to normal drag box     
     }
     else { //if its < 1 there is a problem afoot
+        let content_box = null;
         //rebuild interface to make sure it properly fits
-        let content_box = first_child.querySelector('.tou_content_box');
+        try {
+            content_box = first_child.querySelector('.tou_content_box');
+        }
+        catch ( e ) {
+            console.log(e);
+            console.error("TYPEERROR - HandleContainerBox")
+            console.error("FIRST_CHILD", first_child);
+            console.error("CALLED ELEMENT", el);
+            activeGrid = none;
+            throw e;
+        }
+        
         content_box.innerHTML = "";
         let outer_shell = document.createElement('div');
         outer_shell.className = "tou_content_parellel_container";
