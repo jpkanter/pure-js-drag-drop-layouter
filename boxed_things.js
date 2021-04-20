@@ -6,6 +6,7 @@ var activeGrid = null;
 var activeMode = null;
 var container = null;
 var transformedContainer = null;
+var hoveredContainer = null;
 
 const KONST_CLASS_target_area = "tou_target_field";
 const KONST_CLASS_outer_box = "tou_containment";
@@ -166,6 +167,7 @@ function dragStart(e) {
                     activeItem.initialY = e.clientY - activeItem.offsetHeight/2
                 }
                 activeItem.style.position = "fixed";
+                activeItem.style.opacity = 0.66;
                 setTranslate(activeItem.initialX, activeItem.initialY, activeItem);
                 //reset stuff
                 if( activeMode === 0 ) resetGridTo1x1(activeItem.parentElement);
@@ -203,6 +205,7 @@ function dragEnd(e) {
     //resetCursor
     if( activeMode === 0 || activeMode === 10 ) {
         e.target.style.cursor = null;
+        activeItem.style.opacity = 1;
         hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
         let dropGrid = null;
         for( const val of hoverElements ) {
@@ -363,12 +366,22 @@ function drag(e) {
             //change appereance of "hovered" object
 
             hoverElements = document.elementsFromPoint(e.clientX, e.clientY)
+            
+
             let landingPlace = null;
+            let noExtendedHover = true;;
             for( const val of hoverElements ) {
                 if( val.className === KONST_CLASS_outer_box && val.parentElement.className === KONST_CLASS_target_area ) { 
                     landingPlace = val; 
                 } //should be in order, last one is furthest down
+                if( val.className === "tou_content_parallel_middle" || 
+                    val.className === "tou_content_parallel_left" || 
+                    val.className === "tou_content_parallel_right" ) {
+                    extendedHovered(val);
+                    noExtendedHover = false;
+                } 
             }
+            if( noExtendedHover ) revertExtendedHovered();
             //outside of any one grid, transform back
             if( landingPlace != null && transformedContainer != null ) {
                 revertTargetBox(transformedContainer);
@@ -555,6 +568,61 @@ function revertTargetBox(el) {
             break;
         }
     }
+}
+
+//target is a middle, left or right div of the containment parentEntry Box
+function extendedHovered(el) {
+    if( el === hoveredContainer ) {
+        return;
+    } 
+    revertExtendedHovered()
+    let additionalSpace = 0;
+    if( el.className === "tou_content_parallel_left" || el.className === "tou_content_parallel_right" ) {
+        additionalSpace = 5;
+    }
+    else { additionalSpace = 10;}
+    let containerAbove = el.parentElement.parentElement.parentElement;
+    let steps = 1;
+    if( KONST_W_STEP_MAP.has(containerAbove) ) { steps = KONST_W_STEP_MAP.get(containerAbove); }
+    let n_elements = el.parentElement.querySelectorAll(".tou_content_parallel_content")
+    n_elements = n_elements.length + 1
+    let avaible_width = KONST_WIDTH_dragbox*steps 
+                        + KONST_MARGIN_targetfield*(steps-1) 
+                        + KONST_GAP_targetfield*(steps-1) 
+                        - 2*KONST_BORDER_dragbox
+                        + additionalSpace
+    let width_per_element = 
+    ( avaible_width - (2+KONST_PARALLEL_SIDE + (n_elements-1)*KONST_PARALLEL_MID) ) / n_elements;
+    for( const val of el.parentElement.childNodes ) {
+        if( val.className === "tou_content_parallel_content" || val === el ) {
+            val.style.width = width_per_element;
+        }
+        
+    }
+    hoveredContainer = el;
+}
+
+function revertExtendedHovered() {
+    if( hoveredContainer === null ) { return }
+    let el = hoveredContainer;
+    let containerAbove = el.parentElement.parentElement.parentElement;
+    let steps = 1;
+    if( KONST_W_STEP_MAP.has(containerAbove) ) { steps = KONST_W_STEP_MAP.get(containerAbove); }
+    let n_elements = el.parentElement.querySelectorAll(".tou_content_parallel_content")
+    n_elements = n_elements.length 
+    let avaible_width = KONST_WIDTH_dragbox*steps 
+                        + KONST_MARGIN_targetfield*(steps-1) 
+                        + KONST_GAP_targetfield*(steps-1) 
+                        - 2*KONST_BORDER_dragbox
+    let width_per_element = 
+    ( avaible_width - (2+KONST_PARALLEL_SIDE + (n_elements-1)*KONST_PARALLEL_MID) ) / n_elements;
+    for( const val of el.parentElement.childNodes ) {
+        if( val.className === "tou_content_parallel_content" ) {
+            val.style.width = width_per_element;
+        }
+        else val.style.width = null;
+    }
+    hoveredContainer = null;
 }
 
 function setDragBoxDimension(el, width = 0, height = 0) {
