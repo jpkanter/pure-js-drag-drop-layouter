@@ -95,7 +95,6 @@ docReady(function() {
             for( const seedBox of farmBox ) {
                 box.appendChild(seedBox);
             }
-            console.log(farmBox[0])
             KONST_W_STEP_MAP.set(farmBox[0], discretWidth);
             setDragBoxDimension(farmBox[0], discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
             HandleContainerBox(box)
@@ -506,6 +505,11 @@ function setDimension(el, width = 0, height = 0) {
     if( height !== 0 ) { el.style.height = height; }
 }
 
+/**
+ * transforms Containers into the parent style and back, depending on how many content elements are inside that grid
+ * 
+ * @param {element} el the grid element, the border around the "dragBox", the fields where dragged boxes can be placed 
+ */
 function HandleContainerBox(el) {
     //target: grid field around the dragContainer
     //if only 1 is around, revert to normal design if necessary or do nothing
@@ -533,6 +537,8 @@ function HandleContainerBox(el) {
     if( el.childNodes.length > 1 ) {
         for( const boxy of el.childNodes ) {
             let dragBox = null;
+            //placeholders inside others boxes cease to exist
+
             if( boxy.className === "tou_containment" ) {
                 dragBox = boxy.querySelector('.tou_content_box');
                 if( dragBox.childNodes.length > 1 ) { 
@@ -583,7 +589,6 @@ function HandleContainerBox(el) {
         let width_per_element = 
         ( avaible_width - (2+KONST_PARALLEL_SIDE + (n_elements-1)*KONST_PARALLEL_MID) ) / n_elements;
         contentItemList.forEach(function(item, index) {
-            console.log(index, " ", contentItemList.length);
             let letClearDiv = document.createElement('DIV');
             letClearDiv.className = "tou_content_parallel_content";
             letClearDiv.innerHTML = item;
