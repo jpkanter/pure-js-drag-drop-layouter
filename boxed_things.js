@@ -38,6 +38,7 @@ docReady(function() {
     document.querySelector(`#${KONST_ID_form}`).addEventListener('submit', function(event) {
         SnapTo1_1(document.querySelector(`#${KONST_ID_the_grid}`))
         //this will also trigger a mousedown & mouseup event
+        //TODO: prepare ParentEntry Send Block
         event.preventDefault();
     }, false);
     let dragBoxes = document.querySelectorAll(`#${KONST_ID_repository} .${KONST_CLASS_outer_box}`)
@@ -53,6 +54,54 @@ docReady(function() {
         origin.id = KONST_ID_default_target_area;
         document.querySelector(`#${KONST_ID_the_grid}`).append(origin);
     }
+    for( const box of setBoxes ) {
+        let standardBox = true;
+        for(const boxParts of box.childNodes ) {
+            if( boxParts.className === "tou_create_subentry" ) {
+                standardBox = false;
+                break;
+            }
+        }
+        box.className = KONST_CLASS_target_area
+        tou_gridTranslateXY(box, 1,1);
+        if( doOnce ) { box.id = KONST_ID_default_target_area; doOnce = false; }
+        //resize boxes to grid:
+        let discretWidth = parseInt(box.style.gridColumnEnd) - parseInt(box.style.gridColumn);
+        let discretHeight = parseInt(box.style.gridRowEnd) - parseInt(box.style.gridRow);
+
+        if( standardBox ) {
+            let dragBox = box.innerHTML;
+            box.innerHTML = "";
+            let seedBox = document.createElement("div");
+            seedBox.className = KONST_CLASS_outer_box;
+            seedBox.innerHTML = dragBox;
+            box.appendChild(seedBox);
+            spawnDragBox(seedBox);
+            KONST_W_STEP_MAP.set(seedBox, discretWidth);
+            setDragBoxDimension(seedBox, discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
+        }
+        else {
+            let farmBox = [];
+            for(const boxParts of box.childNodes) {
+                if( boxParts.className === "tou_create_subentry") {
+                    let seedBox = document.createElement("div");
+                    seedBox.className = KONST_CLASS_outer_box;
+                    seedBox.innerHTML = boxParts.innerHTML; 
+                    spawnDragBox(seedBox);
+                    farmBox[farmBox.length] = seedBox;
+                    boxParts.remove();
+                }
+            } 
+            for( const seedBox of farmBox ) {
+                box.appendChild(seedBox);
+            }
+            console.log(farmBox[0])
+            KONST_W_STEP_MAP.set(farmBox[0], discretWidth);
+            setDragBoxDimension(farmBox[0], discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
+            HandleContainerBox(box)
+        }
+    }
+/*
     for( const box of setBoxes ) {
         let dragBox = box.innerHTML;
         box.innerHTML = "";
@@ -70,6 +119,28 @@ docReady(function() {
         KONST_W_STEP_MAP.set(seedBox, discretWidth);
         setDragBoxDimension(seedBox, discretWidth*KONST_WIDTH_dragbox, discretHeight*KONST_HEIGHT_dragbox);
     }
+        
+        let standardBox = true;
+        for(const boxParts of box.childNodes ) {
+            console.log(boxParts.className);
+            if( boxParts.className === "tou_create_subentry" ) {
+                standardBox = false;
+                break;
+            }
+        }
+        if( standardBox ) {
+            spawnDragBox(box);
+        } 
+        else 
+        {
+            for(const boxParts of box.childNodes) {
+                boxParts.className = null;
+                spawnDragBox(boxParts)
+            }
+            HandleContainerBox(box);
+        }*/
+
+    
 });
 
 function docReady(fn) {
